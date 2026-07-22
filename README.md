@@ -2,10 +2,8 @@
 
 An interactive, kid-friendly web app (ages 6–12) that maps 12 of Canada's National Historic Site forts and turns their history into games. Click a fort to see real photos, hear its story read aloud, learn what daily life was like, and play quizzes and mini-games — all in a single HTML file with no install.
 
-**▶️ Live demo:** _add your GitHub Pages link here once published (e.g. `https://<username>.github.io/fort-explorers/`)_
+**▶️ Live demo:** _add your GitHub Pages link here once published (e.g. `https://github.com/jmjingjing/fort-explorers`)
 
-![A map of Canada with red pins marking historic forts](docs/screenshot.png)
-<!-- Optional: add a screenshot at docs/screenshot.png -->
 
 ## ✨ Features
 
@@ -19,12 +17,6 @@ An interactive, kid-friendly web app (ages 6–12) that maps 12 of Canada's Nati
 ## 🚀 How to use
 
 **Just open it:** download `index.html` and double-click it — it runs in any modern browser. An internet connection is needed for the map tiles and the live photos; without one, the app still works using an illustrated fallback and a fort-grid instead of the map.
-
-**Host it free on GitHub Pages:**
-1. Create a new public repository (e.g. `fort-explorers`) and upload `index.html`, `README.md`, and `LICENSE`.
-2. In the repo, go to **Settings → Pages**.
-3. Under "Build and deployment," set **Source: Deploy from a branch**, choose your `main` branch and the `/ (root)` folder, and **Save**.
-4. Wait a minute, then visit `https://<your-username>.github.io/<repo-name>/`.
 
 ## 🧩 Built with
 

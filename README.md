@@ -2,7 +2,7 @@
 
 An interactive, kid-friendly web app (ages 6–12) that maps 12 of Canada's National Historic Site forts and turns their history into games. Click a fort to see real photos, hear its story read aloud, learn what daily life was like, and play quizzes and mini-games — all in a single HTML file with no install.
 
-**▶️ Live demo:** _add your GitHub Pages link here once published (e.g. `https://github.com/jmjingjing/fort-explorers`)
+**▶️ Live demo:** https://jmjingjing.github.io/fort-explorers/
 
 
 ## ✨ Features

@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fort Explorers: Canada's Historic Forts</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --navy:#1b3a5b; --gold:#f2b035; --red:#d64545; --green:#2f9e6f;
+    --cream:#fdf6e9; --ink:#20303f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;color:var(--ink);}
+  body{background:var(--cream);}
+  header{
+    background:linear-gradient(135deg,#1b3a5b,#2c5a86);
+    color:#fff;padding:14px 18px;display:flex;align-items:center;gap:14px;
+    box-shadow:0 3px 0 var(--gold);position:relative;z-index:500;flex-wrap:wrap;
+  }
+  header .logo{font-size:2rem;}
+  header h1{font-size:1.5rem;margin:0;letter-spacing:.5px;}
+  header p{margin:0;font-size:.85rem;opacity:.9;width:100%;}
+  #wrap{display:flex;height:calc(100vh - 92px);}
+  #map{flex:1;height:100%;background:#a9d3e8;}
+  .legend-tip{
+    position:absolute;bottom:14px;left:14px;z-index:600;background:#fff;
+    border:3px solid var(--navy);border-radius:14px;padding:8px 12px;font-size:.82rem;
+    max-width:230px;box-shadow:0 4px 12px rgba(0,0,0,.18);
+  }
+  .legend-tip b{color:var(--navy);}
+  /* Fort markers */
+  .fort-pin{
+    background:var(--red);width:38px;height:38px;border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 6px rgba(0,0,0,.4);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:transform .15s;
+  }
+  .fort-pin span{transform:rotate(45deg);font-size:18px;}
+  .fort-pin:hover{transform:rotate(-45deg) scale(1.15);}
+  .leaflet-marker-icon .fort-pin{}
+  /* Modal */
+  #overlay{
+    position:fixed;inset:0;background:rgba(20,30,45,.72);z-index:1000;
+    display:none;align-items:center;justify-content:center;padding:14px;
+  }
+  #overlay.show{display:flex;}
+  #card{
+    background:var(--cream);width:min(760px,100%);max-height:92vh;overflow-y:auto;
+    border-radius:22px;border:5px solid var(--gold);box-shadow:0 18px 50px rgba(0,0,0,.5);
+    position:relative;
+  }
+  #closeBtn{
+    position:sticky;top:10px;float:right;margin:10px 12px 0 0;z-index:5;
+    background:var(--red);color:#fff;border:none;width:40px;height:40px;border-radius:50%;
+    font-size:1.3rem;cursor:pointer;line-height:1;box-shadow:0 3px 6px rgba(0,0,0,.3);
+  }
+  #closeBtn:hover{background:#b83333;}
+  .card-pad{padding:6px 26px 28px;}
+  .fort-title{color:var(--navy);font-size:1.9rem;margin:.2em 0 .05em;}
+  .fort-loc{color:var(--red);font-weight:bold;margin:0 0 12px;font-size:1rem;}
+  .fort-loc .prov{background:var(--navy);color:#fff;border-radius:20px;padding:2px 10px;font-size:.8rem;margin-left:6px;}
+  .banner{
+    width:100%;height:150px;border-radius:16px;overflow:hidden;margin-bottom:10px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#2c5a86,#87b7d8);
+  }
+  .gallery{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;min-height:4px;}
+  .gallery img{
+    height:120px;border-radius:12px;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.2);
+    cursor:pointer;flex-shrink:0;object-fit:cover;
+  }
+  .photo-note{font-size:.72rem;color:#6b7a88;margin:0 0 12px;}
+  .photo-note a{color:var(--navy);}
+  .story{
+    background:#fff;border-left:6px solid var(--green);border-radius:10px;
+    padding:12px 16px;font-size:1.02rem;line-height:1.5;margin-bottom:16px;
+  }
+  .factchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .chip{background:#fff;border:2px solid var(--navy);border-radius:20px;padding:5px 12px;font-size:.82rem;}
+  .chip b{color:var(--navy);}
+  .bigbtn{
+    display:block;width:100%;background:var(--gold);color:var(--ink);border:none;
+    padding:16px;border-radius:16px;font-size:1.25rem;font-weight:bold;cursor:pointer;
+    box-shadow:0 4px 0 #c98f1e;transition:transform .1s;
+  }
+  .bigbtn:hover{transform:translateY(-2px);}
+  .bigbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #c98f1e;}
+  .bigbtn.green{background:var(--green);color:#fff;box-shadow:0 4px 0 #217a54;}
+  .bigbtn.navy{background:var(--navy);color:#fff;box-shadow:0 4px 0 #10273e;}
+  /* Quiz */
+  .qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .qcount{font-weight:bold;color:var(--navy);font-size:1rem;}
+  .qscore{font-weight:bold;color:var(--green);}
+  .progress{height:12px;background:#e3d9c4;border-radius:8px;overflow:hidden;margin-bottom:16px;}
+  .progress .bar{height:100%;background:var(--green);width:0;transition:width .3s;}
+  .question{font-size:1.3rem;color:var(--ink);margin:0 0 16px;line-height:1.4;font-weight:bold;}
+  .answers{display:flex;flex-direction:column;gap:10px;}
+  .ans{
+    background:#fff;border:3px solid var(--navy);border-radius:14px;padding:14px 16px;
+    font-size:1.08rem;text-align:left;cursor:pointer;transition:all .12s;
+  }
+  .ans:hover:not(.locked){background:#eef4fa;transform:translateX(4px);}
+  .ans.correct{background:var(--green);color:#fff;border-color:var(--green);}
+  .ans.wrong{background:var(--red);color:#fff;border-color:var(--red);}
+  .ans.locked{cursor:default;}
+  .feedback{margin:14px 0 4px;font-size:1.05rem;font-weight:bold;min-height:26px;}
+  .feedback.good{color:var(--green);}
+  .feedback.bad{color:var(--red);}
+  .explain{background:#fff8e6;border-radius:10px;padding:10px 14px;font-size:.95rem;margin-bottom:14px;display:none;}
+  /* Results */
+  .result-emoji{font-size:4rem;text-align:center;margin:10px 0 0;}
+  .result-title{text-align:center;color:var(--navy);font-size:2rem;margin:6px 0;}
+  .result-score{text-align:center;font-size:1.4rem;margin-bottom:6px;}
+  .result-msg{text-align:center;font-size:1.1rem;margin-bottom:20px;color:#42586b;}
+  .badge{display:block;margin:0 auto 16px;width:130px;height:130px;}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;}
+  .btnrow .bigbtn{flex:1;font-size:1.05rem;padding:14px;}
+  /* Passport button in header */
+  #passportBtn{
+    margin-left:8px;background:var(--gold);color:var(--ink);border:none;border-radius:14px;
+    padding:9px 14px;font-family:inherit;font-weight:bold;font-size:.95rem;cursor:pointer;
+    display:flex;align-items:center;gap:8px;box-shadow:0 3px 0 #c98f1e;
+  }
+  #passportBtn:hover{transform:translateY(-1px);}
+  #passportBtn .pcount{background:#fff;color:var(--navy);border-radius:10px;padding:1px 8px;}
+  /* Read-aloud + fun fact + glossary */
+  .toolrow{display:flex;gap:8px;margin:2px 0 12px;flex-wrap:wrap;}
+  .toolbtn{background:#fff;border:2px solid var(--navy);color:var(--navy);border-radius:20px;
+    padding:7px 13px;font-family:inherit;font-weight:bold;font-size:.85rem;cursor:pointer;}
+  .toolbtn:hover{background:#eef4fa;}
+  .toolbtn.on{background:var(--navy);color:#fff;}
+  .factcard{background:#fff4d6;border:2px dashed var(--gold);border-radius:14px;padding:12px 16px;
+    margin-bottom:14px;font-size:1rem;line-height:1.45;}
+  .daily-role{background:#fff;border-left:5px solid var(--gold);border-radius:8px;padding:9px 13px;margin-bottom:8px;font-size:.95rem;line-height:1.45;}
+  .daily-role b{color:var(--navy);}
+  .factcard b{color:#b5820f;}
+  .gloss{border-bottom:2px dotted var(--navy);color:var(--navy);font-weight:bold;cursor:help;}
+  #glossBox{display:none;background:var(--navy);color:#fff;border-radius:12px;padding:10px 14px;
+    margin:-4px 0 14px;font-size:.95rem;}
+  #glossBox b{color:var(--gold);}
+  .streak{display:inline-block;color:#e8730c;font-weight:bold;margin-left:8px;}
+  /* Medals */
+  .medal{font-size:1.1rem;}
+  /* Passport modal */
+  .pass-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:6px 0 16px;}
+  .pass-cell{background:#fff;border:3px solid #dfe7ee;border-radius:14px;padding:10px;text-align:center;position:relative;}
+  .pass-cell.done{border-color:var(--green);}
+  .pass-cell .stamp{position:absolute;top:6px;right:8px;font-size:1.1rem;}
+  .pass-cell .pemoji{font-size:1.8rem;}
+  .pass-cell .pname{font-size:.8rem;font-weight:bold;color:var(--navy);margin-top:3px;line-height:1.15;}
+  .pass-cell .pmedal{font-size:1.2rem;min-height:1.3rem;}
+  .pass-cell.locked{opacity:.6;}
+  .pass-cell.partial{border-color:var(--gold);}
+  .pass-cell .stamp{font-size:.95rem;font-weight:bold;color:var(--navy);}
+  .pbar{height:8px;background:#e3e9ee;border-radius:5px;overflow:hidden;margin:5px 2px 3px;}
+  .pbarfill{height:100%;background:var(--green);transition:width .3s;}
+  .plevels{font-size:.82rem;margin-bottom:2px;}
+  /* Certificate */
+  #certWrap{padding:6px 26px 26px;}
+  .cert{border:10px double var(--gold);border-radius:14px;padding:26px 22px;text-align:center;
+    background:linear-gradient(135deg,#fffdf5,#fdf1d6);}
+  .cert h2{color:var(--navy);font-size:1.8rem;margin:6px 0;}
+  .cert .seal{font-size:3rem;}
+  .cert .who{font-size:1.6rem;color:var(--red);font-weight:bold;border-bottom:2px solid var(--navy);
+    display:inline-block;min-width:60%;padding:4px 10px;margin:8px 0;}
+  .cert input{font-size:1.3rem;text-align:center;border:none;border-bottom:2px dashed var(--navy);
+    background:transparent;font-family:inherit;color:var(--red);font-weight:bold;width:70%;}
+  .cert .sub{color:#42586b;font-size:1rem;margin:6px 0;}
+  @media(max-width:640px){
+    #wrap{flex-direction:column;height:auto;}
+    #map{height:56vh;}
+    .fort-title{font-size:1.5rem;}
+    .question{font-size:1.15rem;}
+    header p{display:none;}
+  }
+  /* Difficulty level buttons */
+  .levelrow{display:flex;gap:10px;flex-wrap:wrap;}
+  .levelrow .bigbtn{flex:1;min-width:110px;font-size:1.1rem;padding:14px 8px;}
+  /* Hard-mode timer bar */
+  .timerbar{position:relative;height:20px;background:#e3d9c4;border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .timerbar .tfill{height:100%;width:100%;background:linear-gradient(90deg,#2f9e6f,#f2b035,#d64545);transition:width 1s linear;}
+  .timerbar .tnum{position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:.8rem;font-weight:bold;color:#20303f;line-height:20px;}
+  /* Games hub */
+  #gamesBtn{margin-left:auto;background:#8ecae6;color:var(--navy);border:none;border-radius:14px;padding:9px 14px;
+    font-family:inherit;font-weight:bold;font-size:.95rem;cursor:pointer;box-shadow:0 3px 0 #5fa8c9;}
+  #gamesBtn:hover{transform:translateY(-1px);}
+  .gamecard{background:#fff;border:3px solid var(--navy);border-radius:16px;padding:16px;text-align:left;
+    cursor:pointer;font-family:inherit;box-shadow:0 3px 6px rgba(0,0,0,.12);transition:transform .1s;width:100%;}
+  .gamecard:hover{transform:translateY(-3px);}
+  .gamecard .gi{font-size:2rem;}
+  .gamecard .gt{font-weight:bold;color:var(--navy);font-size:1.15rem;margin:4px 0 2px;}
+  .gamecard .gd{color:#42586b;font-size:.88rem;}
+  /* Timeline game */
+  .tl-slots{display:flex;gap:6px;align-items:stretch;margin:8px 0 4px;overflow-x:auto;padding-bottom:4px;}
+  .tl-slot{flex:1;min-width:92px;min-height:104px;border:3px dashed #b9c6d3;border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;padding:4px;text-align:center;position:relative;}
+  .tl-slot .num{position:absolute;top:2px;left:6px;font-size:.7rem;color:#8a99a7;font-weight:bold;}
+  .tl-slot.filled{border-style:solid;border-color:var(--navy);cursor:pointer;}
+  .tl-slot.right{border-color:var(--green);background:#eafaf1;}
+  .tl-slot.wrong{border-color:var(--red);background:#fdecec;}
+  .tl-tray{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0;}
+  .tl-card{background:#fff;border:3px solid var(--gold);border-radius:12px;padding:8px 6px;width:96px;text-align:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.12);transition:transform .1s;}
+  .tl-card:hover{transform:translateY(-3px);}
+  .tl-emoji{font-size:1.7rem;}
+  .tl-name{font-size:.72rem;font-weight:bold;color:var(--navy);line-height:1.1;margin-top:3px;}
+  .tl-year{font-size:.85rem;font-weight:bold;color:var(--red);}
+  .arrowline{display:flex;justify-content:space-between;font-weight:bold;color:var(--navy);font-size:.85rem;margin:2px 4px;}
+  /* Cannon game */
+  #cannonScene{position:relative;height:200px;border-radius:14px;overflow:hidden;margin-bottom:12px;
+    background:linear-gradient(#bfe6f5 60%,#7fc3e8 60%,#4a92c4);}
+  .waves{position:absolute;bottom:0;left:0;right:0;height:40%;background:repeating-linear-gradient(90deg,#4a92c4,#4a92c4 12px,#5aa0cf 12px,#5aa0cf 24px);opacity:.5;}
+  #fortIcon{position:absolute;left:8px;bottom:12px;font-size:2.6rem;z-index:2;}
+  #cannonIcon{position:absolute;left:52px;bottom:16px;font-size:1.8rem;z-index:3;}
+  #shipIcon{position:absolute;bottom:20px;font-size:2.4rem;z-index:2;transition:right .5s ease;}
+  #ball{position:absolute;left:70px;bottom:40px;font-size:1.3rem;opacity:0;z-index:4;}
+  .cannon-health{display:flex;justify-content:space-between;font-weight:bold;color:var(--navy);margin-bottom:6px;font-size:.9rem;}
+  /* Dress-up game */
+  .du-wrap{display:flex;gap:16px;flex-wrap:wrap;}
+  .du-char{flex:1;min-width:150px;background:linear-gradient(#eaf3f9,#d5e6f1);border-radius:16px;border:3px solid var(--navy);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;min-height:220px;}
+  .du-fig{font-size:0;line-height:1;text-align:center;}
+  .du-fig div{font-size:3.2rem;line-height:1.05;}
+  .du-controls{flex:2;min-width:220px;}
+  .du-cat{margin-bottom:10px;}
+  .du-cat h4{margin:0 0 5px;color:var(--navy);font-size:.95rem;}
+  .du-opts{display:flex;gap:6px;flex-wrap:wrap;}
+  .du-opt{background:#fff;border:2px solid #cdd8e2;border-radius:12px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:.8rem;display:flex;align-items:center;gap:5px;}
+  .du-opt .oe{font-size:1.3rem;}
+  .du-opt.sel{border-color:var(--gold);background:#fff7e3;}
+  .du-opt.right{border-color:var(--green);background:#eafaf1;}
+  .du-opt .oe{display:inline-flex;align-items:center;}
+  .du-people{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:8px 0 14px;}
+  .du-person{background:#eaf3f9;border:3px solid var(--navy);border-radius:16px;padding:10px;cursor:pointer;font-family:inherit;text-align:center;transition:transform .1s;}
+  .du-person:hover{transform:translateY(-3px);}
+  .du-compare{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+  .du-col{flex:1;min-width:150px;max-width:230px;text-align:center;}
+  .du-collabel{font-weight:bold;color:var(--navy);margin-bottom:4px;}
+  @media print{
+    body *{visibility:hidden;}
+    #certOverlay,#certOverlay *{visibility:visible;}
+    #certOverlay{position:absolute;inset:0;display:block;background:#fff;padding:0;}
+    #certOverlay .noprint{display:none;}
+    #closeCert{display:none;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">🏰</span>
+  <div>
+    <h1>Fort Explorers</h1>
+  </div>
+  <button id="gamesBtn" title="Play mini-games">🎮 Games</button>
+  <button id="passportBtn" title="See your Explorer Passport">🎒 My Passport <span class="pcount"><span id="pcount">0</span>/12</span></button>
+  <p>Tap a red pin to explore a real historic fort in Canada — see photos, hear the story, and play history quizzes and mini-games!</p>
+</header>
+<div id="wrap">
+  <div id="map"></div>
+</div>
+<div class="legend-tip">🗺️ <b>How to play:</b> Click a <span style="color:#d64545;font-weight:bold;">red pin</span> on the map. Read the fort's story, look at the photos, then hit <b>Start Quiz</b>!</div>
+
+<div id="overlay">
+  <div id="card">
+    <button id="closeBtn" aria-label="Close">✕</button>
+    <div class="card-pad" id="cardBody"></div>
+  </div>
+</div>
+
+<!-- Explorer Passport modal -->
+<div id="passOverlay" style="position:fixed;inset:0;background:rgba(20,30,45,.72);z-index:1100;display:none;align-items:center;justify-content:center;padding:14px;">
+  <div style="background:var(--cream);width:min(760px,100%);max-height:92vh;overflow-y:auto;border-radius:22px;border:5px solid var(--navy);box-shadow:0 18px 50px rgba(0,0,0,.5);">
+    <button id="closePass" aria-label="Close" style="position:sticky;top:10px;float:right;margin:10px 12px 0 0;z-index:5;background:var(--navy);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:1.3rem;cursor:pointer;">✕</button>
+    <div class="card-pad" id="passBody"></div>
+  </div>
+</div>
+
+<!-- Games hub + game modal -->
+<div id="gameOverlay" style="position:fixed;inset:0;background:rgba(20,30,45,.72);z-index:1150;display:none;align-items:center;justify-content:center;padding:14px;">
+  <div id="gameCard" style="background:var(--cream);width:min(760px,100%);max-height:92vh;overflow-y:auto;border-radius:22px;border:5px solid #5fa8c9;box-shadow:0 18px 50px rgba(0,0,0,.5);">
+    <button id="closeGame" aria-label="Close" style="position:sticky;top:10px;float:right;margin:10px 12px 0 0;z-index:5;background:#5fa8c9;color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:1.3rem;cursor:pointer;">✕</button>
+    <div class="card-pad" id="gameBody"></div>
+  </div>
+</div>
+
+<!-- Certificate modal -->
+<div id="certOverlay" style="position:fixed;inset:0;background:rgba(20,30,45,.8);z-index:1200;display:none;align-items:center;justify-content:center;padding:14px;">
+  <div style="background:var(--cream);width:min(680px,100%);max-height:94vh;overflow-y:auto;border-radius:22px;border:5px solid var(--gold);box-shadow:0 18px 50px rgba(0,0,0,.5);">
+    <button id="closeCert" class="noprint" aria-label="Close" style="position:sticky;top:10px;float:right;margin:10px 12px 0 0;z-index:5;background:var(--red);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:1.3rem;cursor:pointer;">✕</button>
+    <div id="certWrap"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA: 12 National Historic Site forts across Canada
+   Each has real coordinates, a kid-friendly story, quick facts,
+   and a pool of quiz questions (10 are drawn at random each play).
+   Photos are loaded live from Wikimedia in your browser.
+   ============================================================ */
+const FORTS = [
+{
+  id:"louisbourg", name:"Fortress of Louisbourg", place:"Louisbourg, Nova Scotia", prov:"NS",
+  lat:45.8917, lon:-59.9847, emoji:"⚓", wiki:"Fortress of Louisbourg",
+  builtBy:"France", year:"1713", war:"French & British wars (sieges 1745 & 1758)",
+  story:"Long ago, France built a huge walled town beside the cold Atlantic Ocean to protect its fishing boats and trade. Inside the tall stone walls were homes, shops, soldiers, and a busy harbour. The British attacked and captured it twice! Today it is the LARGEST rebuilt historic town in North America — actors dress up as people from the 1700s so you can see exactly how life looked.",
+  quiz:[
+    {q:"Which country first built the Fortress of Louisbourg?",a:["France","Spain","Italy","Norway"],c:0},
+    {q:"What was Louisbourg built to protect?",a:["Fishing and trade","A gold mine","A zoo","A candy factory"],c:0},
+    {q:"Louisbourg sits right beside which ocean?",a:["The Atlantic Ocean","The Pacific Ocean","The Indian Ocean","A small pond"],c:0},
+    {q:"How many times did the British capture Louisbourg?",a:["Two times","Never","Ten times","Once"],c:0},
+    {q:"What is special about Louisbourg today?",a:["It's the largest rebuilt historic town in North America","It's a shopping mall","It's an airport","It's a hospital"],c:0},
+    {q:"Who do you meet when you visit Louisbourg today?",a:["Actors dressed as people from the 1700s","Astronauts","Race car drivers","Pirates who are real"],c:0},
+    {q:"What surrounded the town of Louisbourg to keep it safe?",a:["Tall stone walls","A candy fence","A river of lava","A giant trampoline"],c:0},
+    {q:"In which province is the Fortress of Louisbourg?",a:["Nova Scotia","Alberta","Ontario","Yukon"],c:0},
+    {q:"Louisbourg was a very busy place for what?",a:["A harbour full of ships","Skateboarding","Video games","Snowboarding"],c:0},
+    {q:"About how long ago did France start building Louisbourg (early 1700s)?",a:["Over 300 years ago","Last year","10 years ago","50 years ago"],c:0},
+    {q:"Why did people build forts like Louisbourg near the water?",a:["To guard ships and the harbour","To go swimming","To catch whales for fun","To build sandcastles"],c:0},
+    {q:"What jobs did people have inside Louisbourg?",a:["Soldiers, shopkeepers, and fishers","Only kings","Only clowns","Only farmers of candy"],c:0},
+    {q:"What is Louisbourg protected as today?",a:["A National Historic Site of Canada","A secret base","A private house","A parking lot"],c:0}
+  ]
+},
+{
+  id:"citadel", name:"Halifax Citadel", place:"Halifax, Nova Scotia", prov:"NS",
+  lat:44.6474, lon:-63.5804, emoji:"⭐", wiki:"Halifax Citadel",
+  builtBy:"Britain", year:"1856 (this version)", war:"Built to defend the harbour (never attacked)",
+  story:"High on a hill above the city of Halifax sits a fort shaped like a STAR! The British built it to guard one of the best harbours in the world. Four different forts were built on this hill over time. A cannon is still fired every day at exactly noon so people can set their clocks. The fort was so strong that enemies never dared to attack it.",
+  quiz:[
+    {q:"What SHAPE is the Halifax Citadel?",a:["A star","A circle","A triangle","A heart"],c:0},
+    {q:"Where is the Citadel built?",a:["On top of a hill","Under the sea","In a cave","On the Moon"],c:0},
+    {q:"What happens at the Citadel every day at noon?",a:["A cannon is fired","Fireworks explode","A parade of elephants","School lets out"],c:0},
+    {q:"Which country built the Halifax Citadel?",a:["Britain","Japan","Brazil","Egypt"],c:0},
+    {q:"What was the Citadel built to guard?",a:["Halifax harbour","A forest","A desert","A candy shop"],c:0},
+    {q:"Was the Halifax Citadel ever attacked by an enemy?",a:["No, it was too strong","Yes, many times","Yes, by dragons","Yes, by robots"],c:0},
+    {q:"How many forts were built on this hill over time?",a:["Four","One hundred","Zero","Twenty"],c:0},
+    {q:"In which city is the Citadel?",a:["Halifax","Toronto","Calgary","Vancouver"],c:0},
+    {q:"Why fire a cannon at noon?",a:["So people can set their clocks","To scare seagulls","For a birthday","To cook popcorn"],c:0},
+    {q:"What do the guards at the Citadel wear today?",a:["Old-style soldier uniforms","Swimsuits","Space suits","Superhero capes"],c:0},
+    {q:"A harbour is a safe place for what?",a:["Ships and boats","Airplanes","Trains","Bicycles"],c:0},
+    {q:"The Halifax Citadel is protected today as a...",a:["National Historic Site","Water park","Farm","Library only"],c:0}
+  ]
+},
+{
+  id:"beausejour", name:"Fort Beauséjour", place:"Aulac, New Brunswick", prov:"NB",
+  lat:45.8639, lon:-64.2914, emoji:"🌾", wiki:"Fort Beauséjour",
+  builtBy:"France", year:"1751", war:"Captured by Britain in 1755 (renamed Fort Cumberland)",
+  story:"Near the border between two provinces, France built Fort Beauséjour to guard the land. But British soldiers surrounded it and took it over after just a few weeks! The British renamed it Fort Cumberland. It sits on a windy hill looking over marshes and fields. Today you can walk the grassy ridges where the old walls once stood.",
+  quiz:[
+    {q:"Which country first built Fort Beauséjour?",a:["France","Britain","Portugal","Greece"],c:0},
+    {q:"What did the British rename the fort after they captured it?",a:["Fort Cumberland","Fort Fun","Fort Snowball","Fort Maple"],c:0},
+    {q:"How long did it take the British to capture the fort?",a:["Just a few weeks","Ten years","One hundred years","A single minute"],c:0},
+    {q:"What is around Fort Beauséjour?",a:["Marshes and fields","A big city","A jungle","A volcano"],c:0},
+    {q:"In which province is Fort Beauséjour?",a:["New Brunswick","British Columbia","Manitoba","Nunavut"],c:0},
+    {q:"What can you do at the fort today?",a:["Walk the grassy ridges where walls once stood","Ride roller coasters","Go scuba diving","Milk cows"],c:0},
+    {q:"Fort Beauséjour was built to guard the...",a:["Land near the border","North Pole","Middle of the ocean","Top of a mountain"],c:0},
+    {q:"Who took the fort from France?",a:["British soldiers","Space aliens","Vikings","Cowboys"],c:0},
+    {q:"The fort sits on a...",a:["Windy hill","Beach ball","Cloud","Floating island"],c:0},
+    {q:"Fort Beauséjour is protected today as a...",a:["National Historic Site","Shopping centre","Racetrack","Zoo"],c:0},
+    {q:"Forts were often built on hills because...",a:["You can see enemies coming from far away","Hills are bouncy","It's closer to the sun","Hills taste good"],c:0}
+  ]
+},
+{
+  id:"chambly", name:"Fort Chambly", place:"Chambly, Quebec", prov:"QC",
+  lat:45.4470, lon:-73.2861, emoji:"🏞️", wiki:"Fort Chambly",
+  builtBy:"France", year:"1665 (wood), 1711 (stone)", war:"Guarded the Richelieu River route",
+  story:"Beside the rushing Richelieu River, France first built a wooden fort, and later a strong STONE one. It guarded an important water road that led all the way toward New York. Soldiers watched the river for enemies coming by canoe and boat. Today the beautiful stone fort still stands right next to the river rapids, and you can go inside to explore.",
+  quiz:[
+    {q:"Fort Chambly was built next to which river?",a:["The Richelieu River","The Amazon River","The Nile River","A chocolate river"],c:0},
+    {q:"What was the FIRST Fort Chambly made of?",a:["Wood","Solid gold","Glass","Ice cream"],c:0},
+    {q:"What is the fort you can visit today made of?",a:["Stone","Cardboard","Rubber","Snow"],c:0},
+    {q:"Which country built Fort Chambly?",a:["France","Australia","India","Mexico"],c:0},
+    {q:"What did soldiers watch the river for?",a:["Enemies in canoes and boats","Rubber ducks","Whales","Pizza deliveries"],c:0},
+    {q:"In which province is Fort Chambly?",a:["Quebec","Ontario","Alberta","Yukon"],c:0},
+    {q:"The river was important because it was like a...",a:["Water road for travel","Swimming pool","Bathtub","Waterslide"],c:0},
+    {q:"What is right next to Fort Chambly?",a:["River rapids","A shopping mall","A desert","A ski hill"],c:0},
+    {q:"Can you go inside Fort Chambly today?",a:["Yes, and explore it","No, it's invisible","Only fish can","No one ever has"],c:0},
+    {q:"Why build a stronger stone fort later?",a:["Stone lasts longer and is harder to attack","Stone is soft and comfy","Wood floats away","Stone is cheaper than air"],c:0},
+    {q:"Fort Chambly today is a...",a:["National Historic Site by the river","Toy store","Hospital","Train station"],c:0}
+  ]
+},
+{
+  id:"wellington", name:"Fort Wellington", place:"Prescott, Ontario", prov:"ON",
+  lat:44.7085, lon:-75.5130, emoji:"🔵", wiki:"Fort Wellington (Ontario)",
+  builtBy:"Britain", year:"1813", war:"War of 1812",
+  story:"During the War of 1812, Britain and the United States were fighting. The British built Fort Wellington beside the St. Lawrence River to protect the boats carrying supplies to their soldiers. Nearby, a famous battle called the Battle of the Windmill happened years later. Today the fort has a real blockhouse you can climb inside, filled with old cannons and stories.",
+  quiz:[
+    {q:"During which war was Fort Wellington built?",a:["The War of 1812","A pillow fight","The Cookie War","A snowball war"],c:0},
+    {q:"Fort Wellington protected boats on which river?",a:["The St. Lawrence River","The Mississippi River","A river of lemonade","The Thames"],c:0},
+    {q:"Who was Britain fighting during the War of 1812?",a:["The United States","France","Spain","Robots"],c:0},
+    {q:"What can you climb inside at the fort today?",a:["A blockhouse","A rocket","A tree fort","A castle in the clouds"],c:0},
+    {q:"What did the boats on the river carry?",a:["Supplies for soldiers","Ice cream cones","Beach toys","Homework"],c:0},
+    {q:"A famous nearby fight was the Battle of the...",a:["Windmill","Watermelon","Bubble","Balloon"],c:0},
+    {q:"In which province is Fort Wellington?",a:["Ontario","Nova Scotia","Manitoba","Alberta"],c:0},
+    {q:"Which country built Fort Wellington?",a:["Britain","China","Italy","Egypt"],c:0},
+    {q:"What is inside the fort's blockhouse?",a:["Old cannons and stories","A swimming pool","A movie theatre","A candy machine"],c:0},
+    {q:"Why build a fort next to the river?",a:["To guard the boats and supplies","To go fishing","To wash clothes","To water plants"],c:0},
+    {q:"Fort Wellington today is a...",a:["National Historic Site","Skate park","Grocery store","Farm for goats"],c:0}
+  ]
+},
+{
+  id:"henry", name:"Fort Henry", place:"Kingston, Ontario", prov:"ON",
+  lat:44.2320, lon:-76.4610, emoji:"🎖️", wiki:"Fort Henry National Historic Site",
+  builtBy:"Britain", year:"1832–1836", war:"Built after the War of 1812 to guard Kingston",
+  story:"After the War of 1812, the British built a big strong fort on a hill to protect the important navy dockyard and canal at Kingston. Soldiers called 'the Fort Henry Guard' lived and trained here. It even held prisoners during two World Wars! Today soldiers in red coats march, play music, and fire cannons in exciting shows, and it's part of a UNESCO World Heritage Site.",
+  quiz:[
+    {q:"Fort Henry was built to protect the navy dockyard and canal at which city?",a:["Kingston","Ottawa","Miami","London"],c:0},
+    {q:"Fort Henry was built RIGHT AFTER which war?",a:["The War of 1812","World War I","A food fight","The Ice Age"],c:0},
+    {q:"What are the marching soldiers today called?",a:["The Fort Henry Guard","The Cookie Crew","The Space Team","The Pool Patrol"],c:0},
+    {q:"What colour coats do the guards wear?",a:["Red","Purple","Rainbow","Invisible"],c:0},
+    {q:"Fort Henry was built on top of a...",a:["Hill","Boat","Cloud","Bridge"],c:0},
+    {q:"During the World Wars, Fort Henry was used to hold...",a:["Prisoners","Puppies","Toys","Ice cream"],c:0},
+    {q:"Which country built Fort Henry?",a:["Britain","Germany","Kenya","Peru"],c:0},
+    {q:"What do the guards do in their shows today?",a:["March, play music, and fire cannons","Bake cakes","Play video games","Ride bikes"],c:0},
+    {q:"Fort Henry is part of a special UNESCO World...",a:["Heritage Site","Water Park","Candy Land","Sports League"],c:0},
+    {q:"In which province is Fort Henry?",a:["Ontario","Quebec","Saskatchewan","Yukon"],c:0},
+    {q:"Why put a fort on a hill by the water?",a:["To watch and guard the harbour","To go tobogganing","To grow flowers","To dry laundry"],c:0},
+    {q:"Fort Henry today is a...",a:["Living history museum","Fire station","Bank","Airport"],c:0}
+  ]
+},
+{
+  id:"george", name:"Fort George", place:"Niagara-on-the-Lake, Ontario", prov:"ON",
+  lat:43.2520, lon:-79.0620, emoji:"⚔️", wiki:"Fort George (Ontario)",
+  builtBy:"Britain", year:"1796–1802", war:"War of 1812",
+  story:"Fort George stood guard where the Niagara River meets a big lake. It was the main British base in the area during the War of 1812. American soldiers attacked and captured it in 1813, but the British won it back! Cannons from Fort George and the American fort across the river once fired at each other. Today, guides in old uniforms show you what soldier life was like.",
+  quiz:[
+    {q:"Fort George was the main British base during which war?",a:["The War of 1812","The War of the Roses","A snowball war","World War II"],c:0},
+    {q:"Who captured Fort George in 1813?",a:["American soldiers","Pirates","Vikings","Dinosaurs"],c:0},
+    {q:"Did the British get Fort George back?",a:["Yes, they won it back","No, never","It flew away","It sank"],c:0},
+    {q:"Fort George stood where the Niagara River meets a big...",a:["Lake","Desert","Mountain","Volcano"],c:0},
+    {q:"Which country built Fort George?",a:["Britain","France","Spain","Japan"],c:0},
+    {q:"The cannons of Fort George fired at a fort across the river in which country?",a:["The United States","Mexico","Brazil","Iceland"],c:0},
+    {q:"In which province is Fort George?",a:["Ontario","Alberta","Nova Scotia","Manitoba"],c:0},
+    {q:"What do guides wear at Fort George today?",a:["Old soldier uniforms","Clown suits","Pyjamas","Wizard robes"],c:0},
+    {q:"What did the guides help you learn about?",a:["Soldier life long ago","How to fly","Deep sea fish","Outer space"],c:0},
+    {q:"A 'base' for an army is a place where they...",a:["Live, train, and store supplies","Take naps only","Eat candy","Watch movies"],c:0},
+    {q:"Fort George today is a...",a:["National Historic Site","Water slide","Shopping mall","Rocket launch pad"],c:0}
+  ]
+},
+{
+  id:"york", name:"Fort York", place:"Toronto, Ontario", prov:"ON",
+  lat:43.6386, lon:-79.4070, emoji:"🏙️", wiki:"Fort York",
+  builtBy:"Britain", year:"1793", war:"War of 1812 (Battle of York, 1813)",
+  story:"Fort York is where the huge city of Toronto began! Long ago the town was called York. In the War of 1812, American ships attacked and there was a big fight called the Battle of York. The soldiers even blew up their own gunpowder store so the enemy couldn't have it! Today the old fort sits surrounded by tall city skyscrapers — old and new side by side.",
+  quiz:[
+    {q:"Fort York is where which big city began?",a:["Toronto","Montreal","Halifax","Regina"],c:0},
+    {q:"What was Toronto called long ago?",a:["York","Bigville","Suntown","Foxburg"],c:0},
+    {q:"The big fight at the fort was called the Battle of...",a:["York","Cupcakes","Bubbles","Marbles"],c:0},
+    {q:"During the war, who attacked Fort York?",a:["American ships","A whale","A thunder cloud","A dragon"],c:0},
+    {q:"Why did the soldiers blow up their own gunpowder store?",a:["So the enemy couldn't have it","For a fun show","By accident with a candle","To make popcorn"],c:0},
+    {q:"What surrounds Fort York today?",a:["Tall city skyscrapers","A jungle","An ocean","A snowy desert"],c:0},
+    {q:"Which country built Fort York?",a:["Britain","Italy","Egypt","Norway"],c:0},
+    {q:"During which war was the Battle of York?",a:["The War of 1812","World War I","A pillow war","The Cookie War"],c:0},
+    {q:"In which province is Fort York?",a:["Ontario","British Columbia","New Brunswick","Nunavut"],c:0},
+    {q:"Fort York shows us old and new side by side because...",a:["An old fort sits among modern buildings","It has a time machine","It's painted two colours","It floats"],c:0},
+    {q:"Fort York today is a...",a:["National Historic Site and museum","Rocket base","Pizza shop","Swimming pool"],c:0}
+  ]
+},
+{
+  id:"garry", name:"Lower Fort Garry", place:"near Selkirk, Manitoba", prov:"MB",
+  lat:50.0930, lon:-96.9370, emoji:"🦫", wiki:"Lower Fort Garry",
+  builtBy:"Hudson's Bay Company", year:"1830s", war:"A fur-trading fort (not a war fort)",
+  story:"Not every fort was for fighting! Lower Fort Garry was a busy fur-trading post built by the Hudson's Bay Company. Trappers and First Nations traders brought beaver furs to swap for goods like blankets, tools, and pots. It's the oldest stone fur-trading fort still standing in North America. Today, costumed guides show how people lived, cooked, and traded almost 200 years ago.",
+  quiz:[
+    {q:"What was Lower Fort Garry mainly used for?",a:["Fur trading","Space launches","Car racing","Making candy"],c:0},
+    {q:"Which company built Lower Fort Garry?",a:["The Hudson's Bay Company","A pizza company","A toy company","A movie studio"],c:0},
+    {q:"What animal's fur was most important for trading?",a:["Beaver","Dinosaur","Dragon","Unicorn"],c:0},
+    {q:"What did traders swap furs for?",a:["Blankets, tools, and pots","Video games","Ice cream trucks","Bicycles"],c:0},
+    {q:"What is special about Lower Fort Garry?",a:["It's the oldest stone fur-trading fort still standing in North America","It's the tallest tower","It's underwater","It's made of candy"],c:0},
+    {q:"In which province is Lower Fort Garry?",a:["Manitoba","Ontario","Quebec","Yukon"],c:0},
+    {q:"Who brought furs to trade at the fort?",a:["Trappers and First Nations traders","Astronauts","Pop stars","Robots"],c:0},
+    {q:"Was Lower Fort Garry mostly a fort for battles?",a:["No, it was for trading","Yes, huge battles","Yes, against dragons","Yes, in space"],c:0},
+    {q:"What do guides show you at the fort today?",a:["How people lived, cooked, and traded long ago","How to fly planes","How to surf","How to ski"],c:0},
+    {q:"Lower Fort Garry is made of...",a:["Stone","Bubbles","Paper","Chocolate"],c:0},
+    {q:"About how long ago did people trade here (1830s)?",a:["Almost 200 years ago","Last week","5 years ago","1000 years ago"],c:0},
+    {q:"Lower Fort Garry today is a...",a:["National Historic Site","Shopping mall","Football stadium","Airport"],c:0}
+  ]
+},
+{
+  id:"battleford", name:"Fort Battleford", place:"Battleford, Saskatchewan", prov:"SK",
+  lat:52.7160, lon:-108.2960, emoji:"🐎", wiki:"Fort Battleford",
+  builtBy:"North-West Mounted Police", year:"1876", war:"North-West Resistance/Rebellion of 1885",
+  story:"Fort Battleford was home to the North-West Mounted Police — the officers on horseback who later became the famous Mounties! They helped keep order on the prairies. During the events of 1885, many townspeople came inside the fort's walls for safety. Today you can see the white wooden buildings with red roofs and learn about the early police and the people of the plains.",
+  quiz:[
+    {q:"Who lived at Fort Battleford?",a:["The North-West Mounted Police","Deep-sea divers","Circus clowns","Space pilots"],c:0},
+    {q:"The Mounted Police later became famous as the...",a:["Mounties","Firefighters","Astronauts","Lifeguards"],c:0},
+    {q:"How did the Mounted Police travel?",a:["On horseback","By spaceship","On skateboards","By submarine"],c:0},
+    {q:"During the events of 1885, why did townspeople go inside the fort?",a:["For safety","For a party","To go swimming","To watch a movie"],c:0},
+    {q:"What colour are the roofs of the fort's buildings?",a:["Red","Purple","Green","Black"],c:0},
+    {q:"In which province is Fort Battleford?",a:["Saskatchewan","Ontario","Nova Scotia","Quebec"],c:0},
+    {q:"The Mounted Police helped keep what on the prairies?",a:["Order and peace","Chaos","Snow","Candy"],c:0},
+    {q:"What are the fort buildings made of and coloured?",a:["White wood with red roofs","Glass and gold","Ice and snow","Rubber and foam"],c:0},
+    {q:"A prairie is a big flat land covered in...",a:["Grass","Ocean","Skyscrapers","Lava"],c:0},
+    {q:"Fort Battleford was built in 1876, about how long ago?",a:["About 150 years ago","Last year","10 years ago","1000 years ago"],c:0},
+    {q:"Fort Battleford today is a...",a:["National Historic Site","Water park","Space station","Toy factory"],c:0}
+  ]
+},
+{
+  id:"langley", name:"Fort Langley", place:"Fort Langley, British Columbia", prov:"BC",
+  lat:49.1680, lon:-122.5790, emoji:"🪵", wiki:"Fort Langley National Historic Site",
+  builtBy:"Hudson's Bay Company", year:"1827", war:"A fur-trading fort — 'Birthplace of BC'",
+  story:"Fort Langley was a fur-trading post by the Fraser River in British Columbia. People traded furs, and later it became famous for selling barrels of salted salmon and even cranberries! In 1858 the colony of British Columbia was announced right here, so it's called the 'Birthplace of BC.' Today you can pan for gold, watch a blacksmith, and explore the wooden buildings and tall log walls.",
+  quiz:[
+    {q:"Fort Langley was built beside which river?",a:["The Fraser River","The Nile River","The Amazon River","A river of juice"],c:0},
+    {q:"What was Fort Langley first used for?",a:["Fur trading","Rocket building","Car racing","Baking pizza"],c:0},
+    {q:"Fort Langley is nicknamed the 'Birthplace of...'?",a:["British Columbia","The Moon","Candy","Dinosaurs"],c:0},
+    {q:"Besides furs, what tasty food did the fort sell in barrels?",a:["Salted salmon","Ice cream","Chocolate bars","Marshmallows"],c:0},
+    {q:"Which company built Fort Langley?",a:["The Hudson's Bay Company","A space company","A shoe company","A candy company"],c:0},
+    {q:"In which province is Fort Langley?",a:["British Columbia","Ontario","Manitoba","Nova Scotia"],c:0},
+    {q:"What fun thing can you try at the fort today?",a:["Pan for gold","Fly a jet","Ride a whale","Drive a race car"],c:0},
+    {q:"Who works at a blacksmith shop?",a:["Someone who shapes hot metal","A person who bakes bread","A pilot","A dentist"],c:0},
+    {q:"The tall walls of Fort Langley are made of...",a:["Logs","Glass","Ice","Bricks of candy"],c:0},
+    {q:"In 1858, what was announced at Fort Langley?",a:["The colony of British Columbia","A new planet","Summer holidays","A candy sale"],c:0},
+    {q:"Fort Langley today is a...",a:["National Historic Site","Movie theatre","Grocery store","Space port"],c:0}
+  ]
+},
+{
+  id:"roddhill", name:"Fort Rodd Hill", place:"Colwood (near Victoria), British Columbia", prov:"BC",
+  lat:48.4330, lon:-123.4560, emoji:"💥", wiki:"Fort Rodd Hill",
+  builtBy:"Britain / Canada", year:"1890s", war:"Coast defence (1890s–1956)",
+  story:"Fort Rodd Hill guarded the sea with BIG guns hidden along the coast to protect an important navy base from enemy warships. Soldiers watched the ocean day and night, ready to fire if a warship appeared. Right next door is Fisgard Lighthouse, the first lighthouse on Canada's west coast! Today you can explore the underground rooms, giant gun spots, and the pretty red-and-white lighthouse.",
+  quiz:[
+    {q:"What did Fort Rodd Hill use to guard the sea?",a:["Big guns","Water balloons","Fishing nets","Beach umbrellas"],c:0},
+    {q:"What was the fort protecting from enemy warships?",a:["A navy base","A candy store","A playground","A farm"],c:0},
+    {q:"What is right next to Fort Rodd Hill?",a:["Fisgard Lighthouse","A roller coaster","A volcano","A pyramid"],c:0},
+    {q:"Fisgard Lighthouse was the FIRST lighthouse on Canada's...",a:["West coast","North Pole","Prairie","Highest mountain"],c:0},
+    {q:"What did the soldiers watch day and night?",a:["The ocean","Television","The stars for fun","A clock"],c:0},
+    {q:"In which province is Fort Rodd Hill?",a:["British Columbia","Ontario","Quebec","Manitoba"],c:0},
+    {q:"What colours is the lighthouse?",a:["Red and white","Purple and green","All black","Rainbow"],c:0},
+    {q:"What can you explore at the fort today?",a:["Underground rooms and giant gun spots","A candy factory","A space rocket","A dinosaur cave"],c:0},
+    {q:"A lighthouse helps to keep whom safe?",a:["Ships and sailors","Farmers","Pilots","Chefs"],c:0},
+    {q:"The soldiers were ready to fire if they saw an enemy...",a:["Warship","Balloon","Kite","Butterfly"],c:0},
+    {q:"Fort Rodd Hill today is a...",a:["National Historic Site","Water slide park","Shopping mall","Train station"],c:0}
+  ]
+}
+];
+
+/* "Did you know?" fun facts (one shown at random each visit) */
+const FACTS={
+  louisbourg:["The rebuilt town has more than 40 buildings you can walk right into!","In the 1700s about 4,000 people lived and worked at Louisbourg.","Dried cod fish was so valuable people called it 'the gold of the sea'."],
+  citadel:["The noon cannon has been fired almost every day for over 150 years!","The star shape lets defenders see and shoot in every direction — no hiding spots for enemies.","Soldiers once used carrier pigeons to send messages."],
+  beausejour:["The British fired cannons for about two weeks before the fort surrendered.","'Beauséjour' means 'beautiful stay' in French.","The fort's pointy corners are called bastions — they let soldiers guard the walls."],
+  chambly:["The stone fort has four pointy bastions, one on each corner.","Right beside the fort are river rapids, so boats had to stop here — a perfect place to guard.","From the walls, soldiers could spot canoes far up and down the river."],
+  wellington:["The blockhouse walls are more than a metre thick!","Its earth walls were built to soak up cannonball hits.","Soldiers' families sometimes lived inside the fort with them."],
+  henry:["The fort has secret defence rooms called caponiers hidden in its ditch.","The Fort Henry Guard performs shows famous all around the world.","It's part of the Rideau Canal, a UNESCO World Heritage Site."],
+  george:["When the fort was captured, the soldiers escaped and built a brand-new post nearby.","Its cannons once had a 'duel' with an American fort across the river.","Soldiers slept on straw-filled mattresses called palliasses."],
+  york:["A giant explosion during the battle was heard for many kilometres!","The whole city of Toronto grew up around this little fort.","On happy days soldiers fired a rippling gun salute called a 'feu de joie'."],
+  garry:["Beaver fur was turned into fancy top hats worn in Europe.","The fort had a store, a doctor, gardens, and even a jail.","Furs were squished into 40-kilogram bundles called 'pieces'."],
+  battleford:["The Mounted Police wore bright red coats so people knew they came in peace.","One officer might patrol a huge stretch of prairie all alone.","The fort's bell rang out to share important news with the town."],
+  langley:["Workers made thousands of barrels of salted salmon here every year.","Cranberries from nearby bogs were shipped as far away as Hawaii!","In 1858 a giant gold rush sent thousands of miners past the fort."],
+  roddhill:["The huge guns could hit ships kilometres out at sea.","The guns were hidden in concrete pits so enemies couldn't spot them.","Fisgard Lighthouse has been shining to guide ships since 1860."]
+};
+
+/* Each fort's era "type" — drives daily-life stories and dress-up characters */
+const FORTTYPE={ citadel:'brit', wellington:'brit', henry:'brit', george:'brit', york:'brit',
+  louisbourg:'fr', beausejour:'fr', chambly:'fr', garry:'trade', langley:'trade',
+  battleford:'police', roddhill:'coast' };
+
+/* "A Day in the Life" vignettes by era type — foundational knowledge for the dress-up game */
+const DAILYBYTYPE={
+  brit:[
+    {role:'The Commander',emoji:'🎖️',text:'The commander was the boss of the fort. He gave the orders, planned how to defend the walls, and lived in the nicest rooms with a warm fireplace and a desk covered in maps. He wore a red coat with shiny buttons.'},
+    {role:"The Commander's Wife",emoji:'👒',text:'She ran the household, hosted tea parties for other officers, and often taught children their reading and manners. She wore long dresses, gloves, and a pretty bonnet.'},
+    {role:'A Soldier',emoji:'💂',text:'A soldier drilled with his musket, stood guard for hours in the cold, cleaned the heavy cannons, and slept on a straw mattress in a crowded barracks room with many other men.'},
+    {role:"A Soldier's Wife",emoji:'🧺',text:'Some wives lived in the fort too. They cooked, washed and mended uniforms, and sold baked goods to earn a few coins. They wore a plain long dress with an apron and a cap.'},
+    {role:'The Children',emoji:'🧒',text:'Children carried water and firewood, learned lessons from a teacher or their mother, and played with wooden hoops, marbles, and homemade rag dolls.'}
+  ],
+  fr:[
+    {role:'The Commander',emoji:'🎖️',text:'The French commander led the soldiers and sent letters home to France by ship. He wore a fine blue coat and a three-corner tricorne hat, and lived in the grandest rooms of the fort.'},
+    {role:"The Commander's Wife",emoji:'👒',text:'An officer\'s wife kept an elegant home, cooked French dishes, and did fine sewing. She wore long dresses and a lace cap, and helped host important visitors.'},
+    {role:'A Soldier',emoji:'💂',text:'French soldiers guarded the walls, fished for cod in the cold sea, and marched in blue coats. When supply ships were late, food could run low and everyone went hungry.'},
+    {role:"A Soldier's Wife",emoji:'🧺',text:'Wives cooked over open fires, baked bread, tended small gardens, and cared for the children inside the fort walls.'},
+    {role:'The Children',emoji:'🧒',text:'Children fetched water, gathered eggs, learned their prayers and letters, and played with wooden toys and cloth dolls.'}
+  ],
+  trade:[
+    {role:'The Chief Trader',emoji:'🧑‍💼',text:'The chief trader ran the fort like a big store. He weighed the furs, kept the record books, and set the prices — so many beaver furs for a blanket, a knife, or a pot.'},
+    {role:"The Trader's Wife",emoji:'👒',text:'Many traders married First Nations or Métis women, who were very important: they made pemmican (dried meat), sewed warm fur clothes and moccasins, and helped translate between languages during trades.'},
+    {role:'A Voyageur / Trapper',emoji:'🛶',text:'Voyageurs paddled giant canoes for weeks singing songs, and trappers set traps along icy rivers to catch beaver. They brought bundles of fur back to the fort to trade.'},
+    {role:'A Worker\'s Wife',emoji:'🧺',text:'Women at the fort cooked, tended gardens and animals, dried fish and berries for winter, and sewed mittens and moccasins.'},
+    {role:'The Children',emoji:'🧒',text:'Children learned to paddle, fish, and set snares, helped in the garden, and played outdoors in every season, even the snowy winter.'}
+  ],
+  police:[
+    {role:'The Commanding Officer',emoji:'🎖️',text:'The commanding officer led the Mounted Police, kept the peace, and held meetings with First Nations leaders. He wore a bright red coat and a wide hat.'},
+    {role:"The Officer's Wife",emoji:'👒',text:'Officers\' wives made the fort feel like home, hosted dances and dinners, and helped care for people who were sick. They wore long prairie dresses.'},
+    {role:'A Mounted Police Officer',emoji:'🐎',text:'A Mountie patrolled the huge prairie on horseback for days at a time, carried the mail, and helped travellers who were lost or in trouble, all in a bright red tunic.'},
+    {role:'A Settler Woman',emoji:'🧺',text:'Settler and Métis women near the fort cooked, sewed, and grew vegetables, and sometimes came inside the walls for safety when there was danger.'},
+    {role:'The Children',emoji:'🧒',text:'Children rode horses, did farm chores like feeding animals, learned lessons, and played games on the wide-open prairie.'}
+  ],
+  coast:[
+    {role:'The Fort Commander',emoji:'🎖️',text:'The commander made sure the huge coast guns were always ready and watched the sea for enemy warships, day and night.'},
+    {role:"The Commander's Wife",emoji:'👒',text:'The commander\'s wife lived in officers\' housing near the fort, kept the home, and joined seaside community events and church socials.'},
+    {role:'A Gunner (Soldier)',emoji:'💥',text:'Gunners loaded and aimed the giant coast guns, practised firing at floating targets in the water, and kept watch through spyglasses for ships far out at sea.'},
+    {role:"The Lighthouse Keeper's Family",emoji:'🔦',text:'At Fisgard Lighthouse next door, the keeper and his family kept the bright light burning every single night to guide ships safely past the rocks.'},
+    {role:'The Children',emoji:'🧒',text:'Children explored the rocky shore and tide pools, watched for passing ships, did their chores, and went to a small nearby school.'}
+  ]
+};
+
+/* Kid-friendly glossary — the first time a word appears in a story, it becomes tappable */
+const GLOSSARY={
+  "garrison":"the group of soldiers who live in and guard a fort",
+  "dockyard":"a place by the water where ships are built and repaired",
+  "fortress":"a very big, strong fort made to protect people from attacks",
+  "fur trade":"swapping animal furs for goods like tools, pots, and blankets",
+  "fur-trading":"swapping animal furs for goods like tools, pots, and blankets",
+  "fur-trade":"swapping animal furs for goods like tools, pots, and blankets",
+  "trappers":"people who catch wild animals for their fur",
+  "blockhouse":"a small strong building with thick walls and slits to shoot through",
+  "cannon":"a big heavy gun that fires large metal balls",
+  "cannons":"big heavy guns that fire large metal balls",
+  "siege":"when an army surrounds a place and tries to force it to give up",
+  "colony":"a place that is settled and ruled by a country far away",
+  "harbour":"a safe place by the shore where ships can rest",
+  "militia":"ordinary people who train to fight as part-time soldiers",
+  "artillery":"big guns, like cannons, used by an army",
+  "canal":"a water path dug by people so boats can travel",
+  "blacksmith":"a worker who heats and hammers metal into tools",
+  "lighthouse":"a tower with a bright light that guides ships at night",
+  "rebellion":"when a group fights against the people in charge",
+  "rapids":"a fast, rough, rocky part of a river",
+  "prisoners":"people who are kept locked up and not allowed to leave",
+  "reenactments":"when people dress up and act out events from long ago"
+};
+
+/* Progress / passport state (kept in memory for this visit) */
+/* Founding year used for the Timeline game (all distinct so ordering is clear) */
+const BUILT={ chambly:1665, louisbourg:1713, citadel:1749, beausejour:1751, york:1793,
+  george:1796, wellington:1813, langley:1827, garry:1830, henry:1832, battleford:1876, roddhill:1895 };
+
+/* Difficulty levels for the fort quiz */
+const LEVELS={
+  easy:  {key:'easy',  label:'Easy 🐣',   n:6, timer:0,  emoji:'🐣', blurb:'6 simple questions'},
+  medium:{key:'medium',label:'Medium ⭐', n:6, timer:0,  emoji:'⭐', blurb:'6 trickier questions'},
+  hard:  {key:'hard',  label:'Hard 🔥',   n:6, timer:12, emoji:'🔥', blurb:'6 hard questions + 12-second timer!'}
+};
+
+/* Dress-Up Time Traveler data: the right historical outfit for each fort's people.
+   Each option is {e:emoji,label:...}; the "correct" indices teach what people wore. */
+const DRESS_OPTS={
+  head:[
+    {label:'Three-corner (tricorne) hat'},   /*0 man*/
+    {label:'Tall soldier\'s shako hat'},      /*1 man*/
+    {label:'Fur trapper\'s cap'},             /*2 man*/
+    {label:'Sun bonnet'},                      /*3 woman/child*/
+    {label:'Wide-brim police hat'},            /*4 man*/
+    {label:'Frilled mob cap'},                 /*5 woman*/
+    {label:'Child\'s flat cap'},               /*6 child*/
+    {label:'Fancy lace day cap'},              /*7 woman*/
+    {label:'Warm knitted cap'}                 /*8 child*/
+  ],
+  body:[
+    {label:'Red army coat'},                   /*0 man*/
+    {label:'Blue French coat'},                /*1 man*/
+    {label:'Fur vest and furs'},               /*2 man*/
+    {label:'Long pioneer dress'},              /*3 woman*/
+    {label:'Red Mountie tunic'},               /*4 man*/
+    {label:'Apron over a dress'},              /*5 woman*/
+    {label:'Child\'s simple tunic'},           /*6 child*/
+    {label:'Fancy Sunday dress'},              /*7 woman*/
+    {label:'Child\'s pinafore'},               /*8 child*/
+    {label:'Child\'s play smock'}              /*9 child*/
+  ],
+  hand:[
+    {label:'Musket (long gun)'},               /*0 man*/
+    {label:'Axe and traps'},                   /*1 man*/
+    {label:'Trade basket'},                     /*2 woman*/
+    {label:'Horse and rope'},                  /*3 man*/
+    {label:'Spyglass'},                        /*4 man*/
+    {label:'Cooking pot'},                      /*5 woman*/
+    {label:'Rag doll (toy)'},                  /*6 child*/
+    {label:'Wooden hoop toy'},                 /*7 child*/
+    {label:'Spinning top toy'},                /*8 child*/
+    {label:'Ball of yarn & knitting'}          /*9 woman*/
+  ]
+};
+/* Which options are shown for each kind of person — kept age/gender-appropriate */
+const DU_POOL={
+  man:   {head:[0,1,2,4],   body:[0,1,2,4],   hand:[0,1,3,4]},
+  woman: {head:[3,5,7],     body:[3,5,7],     hand:[2,5,9]},
+  child: {head:[6,8,3],     body:[6,8,9],     hand:[6,7,8]}
+};
+/* Characters to dress at each fort era (man / woman / child). head/body/hand = correct indices. */
+const CHARTEMPLATES={
+  brit:[
+    {who:'Soldier',fig:'man',head:1,body:0,hand:0,fact:'British soldiers ("redcoats") wore bright red coats and tall shako hats, and carried muskets.'},
+    {who:"Soldier's Wife",fig:'woman',head:5,body:5,hand:5,fact:'Wives at the fort wore a long dress with an apron and a frilled mob cap, and cooked and mended uniforms.'},
+    {who:'Child',fig:'child',head:6,body:6,hand:6,fact:'Children wore simple tunics and caps and played with hoops and homemade rag dolls.'}
+  ],
+  fr:[
+    {who:'French Soldier',fig:'man',head:0,body:1,hand:0,fact:'French soldiers wore blue coats and three-corner tricorne hats, and carried muskets.'},
+    {who:"Officer's Wife",fig:'woman',head:3,body:3,hand:2,fact:'Women wore long dresses and bonnets and carried baskets to the gardens and market.'},
+    {who:'Child',fig:'child',head:6,body:6,hand:6,fact:'Children wore plain tunics and caps and played with wooden toys and cloth dolls.'}
+  ],
+  trade:[
+    {who:'Fur Trader',fig:'man',head:2,body:2,hand:1,fact:'Fur traders wore warm fur caps and fur vests and used axes and traps to catch beaver.'},
+    {who:"Trader's Wife",fig:'woman',head:3,body:3,hand:5,fact:'First Nations and Métis wives made warm clothes and pemmican and cooked over the fire.'},
+    {who:'Child',fig:'child',head:6,body:6,hand:6,fact:'Children learned to fish and paddle and played outside in every season.'}
+  ],
+  police:[
+    {who:'Mounted Police Officer',fig:'man',head:4,body:4,hand:3,fact:'Mounties wore wide hats and bright red tunics and rode horses across the prairie.'},
+    {who:'Settler Woman',fig:'woman',head:3,body:3,hand:2,fact:'Settler women wore long prairie dresses and bonnets and carried baskets for gardening.'},
+    {who:'Child',fig:'child',head:6,body:6,hand:6,fact:'Prairie children rode horses, did farm chores, and played in the wide-open fields.'}
+  ],
+  coast:[
+    {who:'Coast Gunner',fig:'man',head:1,body:1,hand:4,fact:'Gunners wore uniforms and caps and used spyglasses to watch the sea for enemy ships.'},
+    {who:"Commander's Wife",fig:'woman',head:5,body:5,hand:5,fact:'Officers\' wives wore long dresses and caps and kept the seaside home.'},
+    {who:'Child',fig:'child',head:6,body:6,hand:6,fact:'Children explored tide pools and the rocky shore and watched for passing ships.'}
+  ]
+};
+function charsFor(fortId){ return CHARTEMPLATES[FORTTYPE[fortId]]||CHARTEMPLATES.brit; }
+
+/* Per-level question banks. Each question = [question, CORRECT, wrong, wrong, wrong].
+   Easy = simple recall, Medium = why/who/what-now, Hard = dates & specifics. All 4 choices. */
+const QUIZBANKS={
+ louisbourg:{
+  easy:[
+   ["Which country first built the Fortress of Louisbourg?","France","Spain","Italy","Norway"],
+   ["Louisbourg sits right beside which ocean?","The Atlantic Ocean","The Pacific Ocean","The Indian Ocean","The Arctic Ocean"],
+   ["What surrounded the town to keep it safe?","Tall stone walls","A candy fence","A river of lava","A glass dome"],
+   ["In which province is Louisbourg?","Nova Scotia","Alberta","Ontario","Yukon"],
+   ["What was Louisbourg built to protect?","Fishing and trade","A gold mine","A zoo","A space port"],
+   ["Who do you meet at Louisbourg today?","Actors dressed as people from the 1700s","Astronauts","Race car drivers","Pop stars"]
+  ],
+  medium:[
+   ["How many times did the British capture Louisbourg?","Two times","Never","Ten times","Once"],
+   ["What is special about Louisbourg today?","It is the largest rebuilt historic town in North America","It is the tallest tower","It is underwater","It is the newest fort"],
+   ["What valuable fish was dried and traded at Louisbourg?","Cod","Goldfish","Shark","Clownfish"],
+   ["Why build a strong fortress by the harbour?","To guard ships and the harbour","To go swimming","To catch whales for fun","To build sandcastles"],
+   ["Louisbourg is protected today as a...?","National Historic Site","Water park","Airport","Shopping mall"],
+   ["Which two countries fought over Louisbourg?","France and Britain","Spain and Italy","Japan and China","Egypt and Peru"]
+  ],
+  hard:[
+   ["In what year did France begin building Louisbourg?","1713","1500","1801","1867"],
+   ["In which years was Louisbourg attacked in big sieges?","1745 and 1758","1600 and 1620","1812 and 1813","1900 and 1901"],
+   ["About how many people lived at Louisbourg in the 1700s?","About 4,000","About 40","About 40,000","About 5"],
+   ["After winning the second siege, what did the British do to the fortress?","Tore down its walls","Painted it gold","Turned it into a school","Left it exactly the same"],
+   ["Dried cod was so valuable it was nicknamed the...?","Gold of the sea","Silver of the sky","Iron of the ocean","Sugar of the shore"],
+   ["Louisbourg guarded the entrance to which important waterway to New France?","The Gulf of St. Lawrence","The Amazon River","The Nile River","The Pacific Ocean"]
+  ]
+ },
+ citadel:{
+  easy:[
+   ["What SHAPE is the Halifax Citadel?","A star","A circle","A triangle","A heart"],
+   ["Where is the Citadel built?","On top of a hill","Under the sea","In a cave","On the Moon"],
+   ["In which city is the Citadel?","Halifax","Toronto","Calgary","Regina"],
+   ["What colour coats did the British soldiers wear?","Red","Purple","Green","Rainbow"],
+   ["What happens at the Citadel every day at noon?","A cannon is fired","Fireworks explode","An elephant parade","School starts"],
+   ["What was the Citadel built to guard?","Halifax harbour","A forest","A desert","A candy shop"]
+  ],
+  medium:[
+   ["Which country built the Halifax Citadel?","Britain","Japan","Brazil","Egypt"],
+   ["Was the Halifax Citadel ever attacked by an enemy?","No, it was too strong","Yes, many times","Yes, by dragons","Yes, by pirates"],
+   ["How many forts were built on this hill over time?","Four","One","Twenty","Zero"],
+   ["Why fire a cannon at noon?","So people can set their clocks","To scare seagulls","For a birthday","To cook popcorn"],
+   ["What do the guards wear at the Citadel today?","Old-style soldier uniforms","Swimsuits","Space suits","Superhero capes"],
+   ["The Citadel is protected today as a...?","National Historic Site","Water park","Farm","Library"]
+  ],
+  hard:[
+   ["In what year was Halifax and its first fort founded?","1749","1600","1830","1900"],
+   ["The current star-shaped Citadel was finished around which year?","1856","1700","1920","2000"],
+   ["The pointed corners of a star fort are called...?","Bastions","Buttons","Turrets","Chimneys"],
+   ["How did soldiers sometimes send messages long ago?","Carrier pigeons","Text message","Email","Telephone"],
+   ["What does the word 'citadel' mean?","A strong fortress protecting a city","A small boat","A market","A church"],
+   ["Halifax has one of the world's best natural what?","Harbours","Ski hills","Deserts","Volcanoes"]
+  ]
+ },
+ beausejour:{
+  easy:[
+   ["Which country first built Fort Beausejour?","France","Britain","Portugal","Greece"],
+   ["In which province is Fort Beausejour?","New Brunswick","British Columbia","Manitoba","Nunavut"],
+   ["What is around Fort Beausejour?","Marshes and fields","A big city","A jungle","A volcano"],
+   ["What can you do at the fort today?","Walk the grassy walls","Ride roller coasters","Go scuba diving","Milk cows"],
+   ["Who captured the fort from France?","British soldiers","Space aliens","Vikings","Cowboys"],
+   ["The fort sits on a...?","Windy hill","Beach ball","Cloud","Floating island"]
+  ],
+  medium:[
+   ["What did the British rename the fort?","Fort Cumberland","Fort Fun","Fort Snowball","Fort Maple"],
+   ["How long did it take the British to capture the fort?","Just a few weeks","Ten years","One hundred years","One minute"],
+   ["What does 'Beausejour' mean in French?","Beautiful stay","Big cannon","Cold river","Fast horse"],
+   ["Fort Beausejour was built to guard the...?","Land near the border","North Pole","Middle of the ocean","Top of a mountain"],
+   ["The fort's pointy corners are called...?","Bastions","Bubbles","Balloons","Baskets"],
+   ["It is protected today as a...?","National Historic Site","Shopping centre","Racetrack","Zoo"]
+  ],
+  hard:[
+   ["In what year did France build Fort Beausejour?","1751","1600","1830","1901"],
+   ["In what year did the British capture it?","1755","1650","1812","1900"],
+   ["Losing this fort helped lead to the sad event where Acadians were...?","Forced to leave their homes","Given gold","Made into kings","Sent to the Moon"],
+   ["The fort guarded a narrow strip of land called the Isthmus of...?","Chignecto","Panama","Suez","Sunshine"],
+   ["About how long ago was it built (1750s)?","About 270 years ago","About 20 years ago","About 70 years ago","About 1000 years ago"],
+   ["Which two countries fought over this fort?","France and Britain","Spain and Italy","Japan and China","Egypt and Peru"]
+  ]
+ },
+ chambly:{
+  easy:[
+   ["Fort Chambly was built next to which river?","The Richelieu River","The Amazon River","The Nile River","A chocolate river"],
+   ["Which country built Fort Chambly?","France","Australia","India","Mexico"],
+   ["In which province is Fort Chambly?","Quebec","Ontario","Alberta","Yukon"],
+   ["What is the fort you visit today made of?","Stone","Cardboard","Rubber","Snow"],
+   ["What is right next to Fort Chambly?","River rapids","A shopping mall","A desert","A ski hill"],
+   ["Can you go inside Fort Chambly today?","Yes, and explore it","No, it is invisible","Only fish can","No one ever has"]
+  ],
+  medium:[
+   ["What was the FIRST Fort Chambly made of?","Wood","Solid gold","Glass","Ice cream"],
+   ["What did soldiers watch the river for?","Enemies in canoes and boats","Rubber ducks","Whales","Pizza deliveries"],
+   ["The river was important because it was like a...?","Water road for travel","Swimming pool","Bathtub","Waterslide"],
+   ["Why build a stronger stone fort later?","Stone lasts longer and is harder to attack","Stone is soft and comfy","Wood floats away","Stone is free"],
+   ["The stone fort's four corners are called...?","Bastions","Basements","Balconies","Bridges"],
+   ["Fort Chambly today is a...?","National Historic Site by the river","Toy store","Hospital","Train station"]
+  ],
+  hard:[
+   ["In what year was the first wooden Fort Chambly built?","1665","1500","1800","1900"],
+   ["The stone fort was built around which years?","1709 to 1711","1600 to 1605","1850 to 1860","1990 to 2000"],
+   ["The first forts here were built to defend against which people?","The Iroquois (Haudenosaunee)","The Romans","The Vikings","The Egyptians"],
+   ["The Richelieu River leads south toward which area?","Lake Champlain and New York","The Arctic","The Pacific Ocean","Mexico"],
+   ["Rapids beside the fort meant boats had to...?","Stop and unload here","Go faster","Fly over","Turn into canoes"],
+   ["About how long ago was the first fort built (1660s)?","About 360 years ago","About 60 years ago","About 16 years ago","About 1000 years ago"]
+  ]
+ },
+ wellington:{
+  easy:[
+   ["Fort Wellington protected boats on which river?","The St. Lawrence River","The Mississippi River","A river of lemonade","The Thames"],
+   ["Which country built Fort Wellington?","Britain","China","Italy","Egypt"],
+   ["In which province is Fort Wellington?","Ontario","Nova Scotia","Manitoba","Alberta"],
+   ["What can you climb inside at the fort today?","A blockhouse","A rocket","A tree fort","A cloud castle"],
+   ["What did the boats on the river carry?","Supplies for soldiers","Ice cream cones","Beach toys","Homework"],
+   ["Why build a fort next to the river?","To guard the boats and supplies","To go fishing","To wash clothes","To water plants"]
+  ],
+  medium:[
+   ["During which war was Fort Wellington built?","The War of 1812","A pillow fight","The Cookie War","A snowball war"],
+   ["Who was Britain fighting during that war?","The United States","France","Spain","Robots"],
+   ["A famous nearby battle was the Battle of the...?","Windmill","Watermelon","Bubble","Balloon"],
+   ["What is inside the fort's blockhouse today?","Old cannons and stories","A swimming pool","A movie theatre","A candy machine"],
+   ["Its thick earth walls were built to...?","Soak up cannonball hits","Bounce like rubber","Float on water","Glow at night"],
+   ["Fort Wellington today is a...?","National Historic Site","Skate park","Grocery store","Goat farm"]
+  ],
+  hard:[
+   ["In what year was Fort Wellington first built?","1813","1650","1901","1950"],
+   ["The nearby Battle of the Windmill happened in which year?","1838","1750","1900","1999"],
+   ["About how thick are the blockhouse walls?","More than a metre thick","As thin as paper","One centimetre","Ten metres"],
+   ["The fort guarded supply boats between Montreal and...?","Kingston","Miami","London","Tokyo"],
+   ["Who sometimes lived inside the fort with the soldiers?","Their families","Their horses only","Nobody","Pet dragons"],
+   ["The St. Lawrence River was important as a...?","Highway for boats and supplies","Place to surf","Swimming race","Waterfall"]
+  ]
+ },
+ henry:{
+  easy:[
+   ["Fort Henry is in which city?","Kingston","Ottawa","Miami","London"],
+   ["What colour coats do the guards wear?","Red","Purple","Rainbow","Black"],
+   ["Fort Henry was built on top of a...?","Hill","Boat","Cloud","Bridge"],
+   ["Which country built Fort Henry?","Britain","Germany","Kenya","Peru"],
+   ["In which province is Fort Henry?","Ontario","Quebec","Saskatchewan","Yukon"],
+   ["What are the marching soldiers today called?","The Fort Henry Guard","The Cookie Crew","The Space Team","The Pool Patrol"]
+  ],
+  medium:[
+   ["Fort Henry was built right after which war?","The War of 1812","World War I","A food fight","The Ice Age"],
+   ["What did Fort Henry protect at Kingston?","The navy dockyard and canal","A candy factory","A zoo","A theme park"],
+   ["During the World Wars, the fort was used to hold...?","Prisoners","Puppies","Toys","Ice cream"],
+   ["What do the guards do in shows today?","March, play music, and fire cannons","Bake cakes","Play video games","Ride bikes"],
+   ["Fort Henry today is a...?","Living history museum","Fire station","Bank","Airport"],
+   ["Fort Henry is part of which UNESCO World Heritage Site?","The Rideau Canal","The Great Wall","The Pyramids","Niagara Falls"]
+  ],
+  hard:[
+   ["The current Fort Henry was built in which years?","1832 to 1836","1700 to 1705","1900 to 1905","1600 to 1610"],
+   ["Fort Henry guarded the dockyard against which country?","The United States","Mexico","Brazil","Iceland"],
+   ["The fort has hidden defensive rooms in its ditch called...?","Caponiers","Kitchens","Bedrooms","Balconies"],
+   ["The Rideau Canal connects Kingston to which city?","Ottawa","Vancouver","Halifax","Calgary"],
+   ["The Rideau Canal let boats avoid which risky border river?","The St. Lawrence","The Amazon","The Nile","The Yangtze"],
+   ["The Fort Henry Guard is famous around the world for its...?","Military shows and music","Cooking","Painting","Swimming"]
+  ]
+ },
+ george:{
+  easy:[
+   ["Which country built Fort George?","Britain","France","Spain","Japan"],
+   ["In which province is Fort George?","Ontario","Alberta","Nova Scotia","Manitoba"],
+   ["Fort George stood where the Niagara River meets a big...?","Lake","Desert","Mountain","Volcano"],
+   ["What do guides wear at Fort George today?","Old soldier uniforms","Clown suits","Pyjamas","Wizard robes"],
+   ["What did the soldiers carry to fight?","Muskets","Water guns","Slingshots","Snowballs"],
+   ["Fort George today is a...?","National Historic Site","Water slide","Shopping mall","Rocket pad"]
+  ],
+  medium:[
+   ["Fort George was the main British base during which war?","The War of 1812","The War of the Roses","A snowball war","World War II"],
+   ["Who captured Fort George in 1813?","American soldiers","Pirates","Vikings","Dinosaurs"],
+   ["Did the British get Fort George back?","Yes, they won it back","No, never","It flew away","It sank"],
+   ["The cannons of Fort George fired at a fort across the river in which country?","The United States","Mexico","Brazil","Iceland"],
+   ["A 'base' for an army is a place where they...?","Live, train, and store supplies","Take naps only","Eat candy","Watch movies"],
+   ["The town beside Fort George is called...?","Niagara-on-the-Lake","Niagara Falls City","Lake Town","Fort City"]
+  ],
+  hard:[
+   ["In which years was Fort George built?","1796 to 1802","1650 to 1660","1900 to 1910","1560 to 1570"],
+   ["In what year did the Americans capture Fort George?","1813","1755","1900","1999"],
+   ["When the fort was captured, the British soldiers...?","Escaped and built a new post nearby","Gave up forever","Flew away","Hid in the lake"],
+   ["What did soldiers sleep on?","Straw mattresses called palliasses","Waterbeds","Bunk beds","Hammocks of gold"],
+   ["Fort George faced which American fort across the river?","Fort Niagara","Fort Knox","Fort Lauderdale","Fort Worth"],
+   ["The War of 1812 was mostly between Britain and which country?","The United States","France","Russia","Spain"]
+  ]
+ },
+ york:{
+  easy:[
+   ["Fort York is where which big city began?","Toronto","Montreal","Halifax","Regina"],
+   ["Which country built Fort York?","Britain","Italy","Egypt","Norway"],
+   ["In which province is Fort York?","Ontario","British Columbia","New Brunswick","Nunavut"],
+   ["What surrounds Fort York today?","Tall city skyscrapers","A jungle","An ocean","A snowy desert"],
+   ["What was Toronto called long ago?","York","Bigville","Suntown","Foxburg"],
+   ["Fort York today is a...?","National Historic Site and museum","Rocket base","Pizza shop","Swimming pool"]
+  ],
+  medium:[
+   ["The big fight at the fort was called the Battle of...?","York","Cupcakes","Bubbles","Marbles"],
+   ["During which war was the Battle of York?","The War of 1812","World War I","A pillow war","The Cookie War"],
+   ["Who attacked Fort York?","American ships","A whale","A thunder cloud","A dragon"],
+   ["Why did the soldiers blow up their own gunpowder store?","So the enemy could not have it","For a fun show","By accident","To make popcorn"],
+   ["Fort York shows old and new side by side because...?","An old fort sits among modern buildings","It has a time machine","It is two colours","It floats"],
+   ["On special days soldiers fired a rippling gun salute called a...?","Feu de joie","Big bang","Boom parade","Happy shot"]
+  ],
+  hard:[
+   ["In what year was Fort York first built?","1793","1650","1901","1990"],
+   ["In what year was the Battle of York?","1813","1755","1900","2000"],
+   ["The huge explosion at the battle was the fort's...?","Gunpowder magazine blowing up","Kitchen oven","Fireworks show","Cannon factory"],
+   ["'Feu de joie' is a phrase in which language?","French","Spanish","German","Latin"],
+   ["After the battle, the American soldiers...?","Burned some buildings","Built a school","Planted trees","Left gifts"],
+   ["York was the capital of which colony at the time?","Upper Canada","Lower Canada","Nova Scotia","British Columbia"]
+  ]
+ },
+ garry:{
+  easy:[
+   ["What was Lower Fort Garry mainly used for?","Fur trading","Space launches","Car racing","Making candy"],
+   ["In which province is Lower Fort Garry?","Manitoba","Ontario","Quebec","Yukon"],
+   ["What is Lower Fort Garry made of?","Stone","Bubbles","Paper","Chocolate"],
+   ["What animal's fur was most important for trading?","Beaver","Dinosaur","Dragon","Unicorn"],
+   ["Who brought furs to trade at the fort?","Trappers and First Nations traders","Astronauts","Pop stars","Robots"],
+   ["Was it mostly a fort for battles?","No, it was for trading","Yes, huge battles","Yes, against dragons","Yes, in space"]
+  ],
+  medium:[
+   ["Which company built Lower Fort Garry?","The Hudson's Bay Company","A pizza company","A toy company","A movie studio"],
+   ["What did traders swap furs for?","Blankets, tools, and pots","Video games","Ice cream trucks","Bicycles"],
+   ["What is special about Lower Fort Garry?","Oldest stone fur-trading fort still standing in North America","The tallest tower","An underwater fort","A candy fort"],
+   ["What did the fort have inside?","A store, a doctor, gardens, and a jail","A roller coaster","A cinema","A pool"],
+   ["What do guides show you today?","How people lived, cooked, and traded long ago","How to fly planes","How to surf","How to ski"],
+   ["Lower Fort Garry today is a...?","National Historic Site","Shopping mall","Football stadium","Airport"]
+  ],
+  hard:[
+   ["In which decade was Lower Fort Garry built?","The 1830s","The 1600s","The 1920s","The 1990s"],
+   ["Beaver fur was made into what fashion item in Europe?","Fancy felt hats","Rubber boots","Silk scarves","Gold rings"],
+   ["Furs were packed into 40-kilogram bundles called...?","Pieces","Blocks","Barrels","Boxes"],
+   ["The Hudson's Bay Company is famous for trading in what?","Furs","Cars","Phones","Rockets"],
+   ["Lower Fort Garry sits beside which river?","The Red River","The Amazon","The Nile","The Thames"],
+   ["About how long ago was it built (1830s)?","Almost 200 years ago","About 20 years ago","About 5 years ago","About 1000 years ago"]
+  ]
+ },
+ battleford:{
+  easy:[
+   ["Who lived at Fort Battleford?","The North-West Mounted Police","Deep-sea divers","Circus clowns","Space pilots"],
+   ["How did the Mounted Police travel?","On horseback","By spaceship","On skateboards","By submarine"],
+   ["In which province is Fort Battleford?","Saskatchewan","Ontario","Nova Scotia","Quebec"],
+   ["What colour are the fort's roofs?","Red","Purple","Green","Black"],
+   ["A prairie is a big flat land covered in...?","Grass","Ocean","Skyscrapers","Lava"],
+   ["Fort Battleford today is a...?","National Historic Site","Water park","Space station","Toy factory"]
+  ],
+  medium:[
+   ["The Mounted Police later became famous as the...?","Mounties","Firefighters","Astronauts","Lifeguards"],
+   ["During the events of 1885, why did townspeople go inside the fort?","For safety","For a party","To go swimming","To watch a movie"],
+   ["The Mounted Police helped keep what on the prairies?","Order and peace","Chaos","Snow","Candy"],
+   ["What did the fort's bell do?","Warn the town of important news","Ring just for fun","Call for pizza","Wake up bears"],
+   ["The fort buildings are...?","White wood with red roofs","Glass and gold","Ice and snow","Rubber and foam"],
+   ["The Mounted Police wore bright coats of what colour?","Red","Blue","Yellow","Black"]
+  ],
+  hard:[
+   ["In what year was Fort Battleford built?","1876","1650","1812","1990"],
+   ["The North-West Resistance (Rebellion) happened in which year?","1885","1750","1920","2001"],
+   ["The Mounted Police were the start of today's famous...?","RCMP (Royal Canadian Mounted Police)","Navy","Air Force","Coast Guard"],
+   ["Why did the police wear bright RED coats?","So people knew they came in peace","To hide in bushes","For a costume party","To match the roofs"],
+   ["About how long ago was the fort built (1876)?","About 150 years ago","About 15 years ago","About 500 years ago","About 1000 years ago"],
+   ["Fort Battleford stands on the flat land called the...?","Prairies","Rainforest","Tundra ice cap","Sand dunes"]
+  ]
+ },
+ langley:{
+  easy:[
+   ["Fort Langley was built beside which river?","The Fraser River","The Nile River","The Amazon River","A river of juice"],
+   ["What was Fort Langley first used for?","Fur trading","Rocket building","Car racing","Baking pizza"],
+   ["In which province is Fort Langley?","British Columbia","Ontario","Manitoba","Nova Scotia"],
+   ["The tall walls of Fort Langley are made of...?","Logs","Glass","Ice","Candy bricks"],
+   ["Which company built Fort Langley?","The Hudson's Bay Company","A space company","A shoe company","A candy company"],
+   ["What fun thing can you try at the fort today?","Pan for gold","Fly a jet","Ride a whale","Drive a race car"]
+  ],
+  medium:[
+   ["Fort Langley is nicknamed the 'Birthplace of...'?","British Columbia","The Moon","Candy","Dinosaurs"],
+   ["Besides furs, what tasty food did the fort sell in barrels?","Salted salmon","Ice cream","Chocolate bars","Marshmallows"],
+   ["Who works at a blacksmith shop?","Someone who shapes hot metal","A baker","A pilot","A dentist"],
+   ["In 1858, what was announced at Fort Langley?","The colony of British Columbia","A new planet","Summer holidays","A candy sale"],
+   ["What berry from nearby bogs was shipped far away?","Cranberries","Bananas","Grapes","Pineapples"],
+   ["Fort Langley today is a...?","National Historic Site","Movie theatre","Grocery store","Space port"]
+  ],
+  hard:[
+   ["In what year was Fort Langley built?","1827","1650","1901","1990"],
+   ["In what year was the colony of British Columbia proclaimed here?","1858","1750","1900","2000"],
+   ["In 1858, thousands of people rushed past the fort looking for...?","Gold","Dinosaurs","Candy","Oil"],
+   ["Cranberries from Fort Langley were shipped as far as...?","Hawaii","The Moon","Antarctica","Egypt"],
+   ["The Fraser River is in which part of Canada?","The west coast","The far north","The east coast","The centre"],
+   ["About how long ago was Fort Langley built (1827)?","About 200 years ago","About 20 years ago","About 500 years ago","About 1000 years ago"]
+  ]
+ },
+ roddhill:{
+  easy:[
+   ["What did Fort Rodd Hill use to guard the sea?","Big guns","Water balloons","Fishing nets","Beach umbrellas"],
+   ["What is right next to Fort Rodd Hill?","Fisgard Lighthouse","A roller coaster","A volcano","A pyramid"],
+   ["In which province is Fort Rodd Hill?","British Columbia","Ontario","Quebec","Manitoba"],
+   ["What colours is the lighthouse?","Red and white","Purple and green","All black","Rainbow"],
+   ["What did the soldiers watch day and night?","The ocean","Television","The stars for fun","A clock"],
+   ["Fort Rodd Hill today is a...?","National Historic Site","Water slide park","Shopping mall","Train station"]
+  ],
+  medium:[
+   ["What was the fort protecting from enemy warships?","A navy base","A candy store","A playground","A farm"],
+   ["Fisgard Lighthouse was the FIRST lighthouse on Canada's...?","West coast","North Pole","Prairie","Highest mountain"],
+   ["What can you explore at the fort today?","Underground rooms and giant gun spots","A candy factory","A space rocket","A dinosaur cave"],
+   ["A lighthouse helps keep whom safe?","Ships and sailors","Farmers","Pilots","Chefs"],
+   ["The guns were hidden so enemies could not...?","See them","Hear them","Smell them","Taste them"],
+   ["The soldiers were ready to fire if they saw an enemy...?","Warship","Balloon","Kite","Butterfly"]
+  ],
+  hard:[
+   ["In which decade was Fort Rodd Hill built?","The 1890s","The 1650s","The 1770s","The 1990s"],
+   ["The guns were hidden in pits made of...?","Concrete","Cotton","Paper","Glass"],
+   ["Fisgard Lighthouse has shone since which year?","1860","1760","1960","2000"],
+   ["The navy base Fort Rodd Hill protected is called...?","Esquimalt","Miami","Halifax","Vancouver"],
+   ["Fort Rodd Hill guarded the coast near which city?","Victoria","Toronto","Winnipeg","Ottawa"],
+   ["Coastal forts like this defended against attacks from the...?","Sea","Sky only","Underground","Desert"]
+  ]
+ }
+};
+
+const PROGRESS={ visited:{}, scores:{}, games:{cannon:{easy:null,medium:null,hard:null}, blitz:null} };
+function recordGameBest(key,val){ if(PROGRESS.games[key]==null || val>PROGRESS.games[key]) PROGRESS.games[key]=val; }
+function recordCannonBest(diff,val){ const c=PROGRESS.games.cannon; if(c[diff]==null || val>c[diff]) c[diff]=val; }
+function cannonBestMax(){ const c=PROGRESS.games.cannon; return Math.max(c.easy||0,c.medium||0,c.hard||0); }
+function resetAllScores(){ PROGRESS.visited={}; PROGRESS.scores={}; PROGRESS.games={cannon:{easy:null,medium:null,hard:null}, blitz:null}; updatePassportCount(); }
+
+function medalForPct(pct){
+  if(pct>=1)    return {e:"🥇",name:"Gold"};
+  if(pct>=0.8)  return {e:"🥈",name:"Silver"};
+  if(pct>=0.5)  return {e:"🥉",name:"Bronze"};
+  if(pct>0)     return {e:"🎗️",name:"Ribbon"};
+  return {e:"",name:""};
+}
+function levelsDone(id){ const s=PROGRESS.scores[id]; return s?['easy','medium','hard'].filter(function(k){return s[k];}).length:0; }
+function fortDone(id){ return levelsDone(id)>=3; }               // all 3 quizzes finished
+function completedCount(){ return FORTS.filter(function(f){return fortDone(f.id);}).length; }
+function quizzesDoneTotal(){ return FORTS.reduce(function(n,f){return n+levelsDone(f.id);},0); }  // out of 36
+function visitedCount(){ return Object.keys(PROGRESS.visited).length; }
+function updatePassportCount(){ const el=document.getElementById('pcount'); if(el) el.textContent=completedCount(); }
+function markVisited(id){ PROGRESS.visited[id]=true; updatePassportCount(); }
+function recordScore(id,levelKey,score,total){
+  const pct=total?score/total:0;
+  if(!PROGRESS.scores[id]) PROGRESS.scores[id]={};
+  const prev=PROGRESS.scores[id][levelKey];
+  if(!prev || pct>prev.pct){ PROGRESS.scores[id][levelKey]={score:score,total:total,pct:pct}; }
+  updatePassportCount();
+}
+/* Best result across all levels for a fort */
+function bestTop(id){
+  const s=PROGRESS.scores[id]; if(!s) return null;
+  let top=null, lvl=null;
+  ['easy','medium','hard'].forEach(function(k){ if(s[k] && (!top || s[k].pct>top.pct)){ top=s[k]; lvl=k; } });
+  return top ? {score:top.score,total:top.total,pct:top.pct,level:lvl} : null;
+}
+
+/* Sound effects (Web Audio — no files needed) */
+let _actx=null, soundOn=true;
+function beep(kind){
+  if(!soundOn) return;
+  try{
+    if(!_actx) _actx=new (window.AudioContext||window.webkitAudioContext)();
+    const now=_actx.currentTime;
+    const notes = kind==='good' ? [660,880] : kind==='bad' ? [200,150] : kind==='win' ? [523,659,784,1047] : [500];
+    notes.forEach(function(freq,i){
+      const o=_actx.createOscillator(), g=_actx.createGain();
+      o.type = kind==='bad' ? 'square' : 'sine';
+      o.frequency.value=freq; o.connect(g); g.connect(_actx.destination);
+      const t=now+i*0.11;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.16,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.14);
+      o.start(t); o.stop(t+0.16);
+    });
+  }catch(e){}
+}
+
+/* Read-aloud (browser speech) */
+let speaking=false;
+function speak(text,btn){
+  if(!('speechSynthesis' in window)){ return; }
+  if(speaking){ window.speechSynthesis.cancel(); speaking=false; if(btn) btn.classList.remove('on'); return; }
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=0.95; u.pitch=1.05;
+  u.onend=function(){ speaking=false; if(btn) btn.classList.remove('on'); };
+  speaking=true; if(btn) btn.classList.add('on');
+  window.speechSynthesis.speak(u);
+}
+function stopSpeaking(){ if('speechSynthesis' in window){ window.speechSynthesis.cancel(); } speaking=false; }
+
+/* Wrap the first occurrence of each glossary word in a tappable span */
+function glossify(text){
+  const used={};
+  const terms=Object.keys(GLOSSARY).sort(function(a,b){return b.length-a.length;});
+  const re=new RegExp('\\b('+terms.map(function(t){return t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}).join('|')+')\\b','gi');
+  return text.replace(re,function(m){
+    const key=m.toLowerCase();
+    if(used[key]||!GLOSSARY[key]) return m;
+    used[key]=1;
+    return '<span class="gloss" data-def="'+esc(GLOSSARY[key])+'" data-word="'+esc(m)+'">'+m+'</span>';
+  });
+}
+
+/* ============================================================
+   MAP SETUP  (Leaflet map when available; friendly fort-grid
+   fallback if the map library can't load, e.g. offline)
+   ============================================================ */
+function initMap(){
+  if(typeof L === 'undefined'){ buildFallback(); return; }
+  try{
+    const map = L.map('map',{minZoom:3, maxZoom:12, worldCopyJump:true}).setView([56.5,-95],4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'&copy; OpenStreetMap contributors', maxZoom:19
+    }).addTo(map);
+
+    function makeIcon(emoji){
+      return L.divIcon({
+        className:'',
+        html:'<div class="fort-pin"><span>'+emoji+'</span></div>',
+        iconSize:[38,38], iconAnchor:[19,38], popupAnchor:[0,-36]
+      });
+    }
+    const bounds = [];
+    FORTS.forEach(function(f){
+      const m = L.marker([f.lat,f.lon],{icon:makeIcon(f.emoji), title:f.name}).addTo(map);
+      m.bindTooltip(f.name,{direction:'top',offset:[0,-34]});
+      m.on('click',function(){ openFort(f); });
+      bounds.push([f.lat,f.lon]);
+    });
+    map.fitBounds(bounds,{padding:[50,50]});
+  }catch(err){ buildFallback(); }
+}
+
+/* Fallback: clickable grid of forts grouped so kids can still explore */
+function buildFallback(){
+  const mapDiv=document.getElementById('map');
+  const tip=document.querySelector('.legend-tip'); if(tip) tip.style.display='none';
+  let html='<div style="padding:18px;overflow-y:auto;height:100%;background:#eaf3f9;">'+
+    '<p style="margin:0 0 14px;color:#1b3a5b;font-weight:bold;font-size:1.05rem;">'+
+    '🗺️ Pick a fort to explore! (Map needs internet — here are all 12 forts:)</p>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">';
+  FORTS.forEach(function(f){
+    html+='<button class="fortcard" data-id="'+f.id+'" style="text-align:left;cursor:pointer;'+
+      'background:#fff;border:3px solid #1b3a5b;border-radius:16px;padding:14px;font-family:inherit;'+
+      'box-shadow:0 3px 6px rgba(0,0,0,.12);transition:transform .1s;">'+
+      '<div style="font-size:2rem">'+f.emoji+'</div>'+
+      '<div style="font-weight:bold;color:#1b3a5b;font-size:1.05rem;margin:4px 0 2px;">'+esc(f.name)+'</div>'+
+      '<div style="color:#d64545;font-size:.82rem;">📍 '+esc(f.place)+'</div>'+
+      '</button>';
+  });
+  html+='</div></div>';
+  mapDiv.innerHTML=html;
+  mapDiv.querySelectorAll('.fortcard').forEach(function(b){
+    b.onmouseenter=function(){ b.style.transform='translateY(-3px)'; };
+    b.onmouseleave=function(){ b.style.transform='none'; };
+    b.onclick=function(){ const f=FORTS.find(function(x){return x.id===b.getAttribute('data-id');}); openFort(f); };
+  });
+}
+
+window.addEventListener('load', initMap);
+
+/* ============================================================
+   FORT CARD
+   ============================================================ */
+const overlay = document.getElementById('overlay');
+const cardBody = document.getElementById('cardBody');
+document.getElementById('closeBtn').onclick = closeCard;
+overlay.addEventListener('click',function(e){ if(e.target===overlay) closeCard(); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeCard(); });
+
+function closeCard(){ stopSpeaking(); overlay.classList.remove('show'); cardBody.innerHTML=''; }
+
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function openFort(f){
+  overlay.classList.add('show');
+  document.getElementById('card').scrollTop = 0;
+  markVisited(f.id);
+  const fact = FACTS[f.id] ? pick(FACTS[f.id]) : null;
+  const sc = PROGRESS.scores[f.id]||{};
+  function lvlBest(k){ return sc[k] ? sc[k].score+'/'+sc[k].total+' '+medalForPct(sc[k].pct).e : '—'; }
+  const bestLine = '<div class="chip"><b>Your best:</b> 🐣 '+lvlBest('easy')+' · ⭐ '+lvlBest('medium')+' · 🔥 '+lvlBest('hard')+'</div>';
+  cardBody.innerHTML =
+    '<div class="banner" id="banner"><div style="font-size:4.5rem">'+f.emoji+'</div></div>'+
+    '<div class="gallery" id="gallery"></div>'+
+    '<p class="photo-note" id="photoNote">Loading real photos… <a href="https://en.wikipedia.org/wiki/'+encodeURIComponent(f.wiki)+'" target="_blank" rel="noopener">See more on Wikipedia →</a></p>'+
+    '<h2 class="fort-title">'+esc(f.name)+'</h2>'+
+    '<p class="fort-loc">📍 '+esc(f.place)+'<span class="prov">'+f.prov+'</span></p>'+
+    '<div class="toolrow">'+
+      '<button class="toolbtn" id="readBtn">🔊 Read to me</button>'+
+      '<span class="toolbtn" style="cursor:default;border-style:dashed;">💡 Tip: tap the <span class="gloss">underlined</span> words!</span>'+
+    '</div>'+
+    '<div class="story" id="storyText">'+glossify(esc(f.story))+'</div>'+
+    '<div id="glossBox"></div>'+
+    (fact ? '<div class="factcard">💡 <b>Did you know?</b> '+esc(fact)+'</div>' : '')+
+    '<div class="factchips">'+
+      '<div class="chip"><b>Built by:</b> '+esc(f.builtBy)+'</div>'+
+      '<div class="chip"><b>Started:</b> '+esc(f.year)+'</div>'+
+      '<div class="chip"><b>Why / war:</b> '+esc(f.war)+'</div>'+
+      bestLine+
+    '</div>'+
+    '<button class="bigbtn" id="dailyBtn" style="background:#c9b28a;box-shadow:0 4px 0 #a2884f;color:#3a2c12;margin-bottom:6px;">🏠 A Day in the Life at this fort ▾</button>'+
+    '<div id="dailyBox" style="display:none;margin-bottom:14px;"></div>'+
+    '<p style="font-weight:bold;color:var(--navy);margin:4px 0 8px;">🎯 Pick a quiz level:</p>'+
+    '<div class="levelrow">'+
+      '<button class="bigbtn lvl" data-lvl="easy" style="background:#8ed0a6;box-shadow:0 4px 0 #5aa578;">🐣 Easy</button>'+
+      '<button class="bigbtn lvl" data-lvl="medium">⭐ Medium</button>'+
+      '<button class="bigbtn lvl" data-lvl="hard" style="background:#f08a5d;box-shadow:0 4px 0 #c96a41;color:#fff;">🔥 Hard</button>'+
+    '</div>'+
+    '<p style="text-align:center;font-size:.8rem;color:#6b7a88;margin:6px 0 0;">Each level has its own questions — all with 4 choices. 🔥 Hard is timed!</p>';
+  cardBody.querySelectorAll('.lvl').forEach(function(b){
+    b.onclick=function(){ startQuiz(f, LEVELS[b.getAttribute('data-lvl')]); };
+  });
+  document.getElementById('readBtn').onclick = function(){ speak(f.story+'. Did you know? '+(fact||''), this); };
+  const dBtn=document.getElementById('dailyBtn'), dBox=document.getElementById('dailyBox');
+  dBtn.onclick=function(){
+    if(dBox.style.display==='none'){
+      if(!dBox.innerHTML) dBox.innerHTML=renderDaily(f);
+      dBox.style.display='block'; dBtn.innerHTML='🏠 A Day in the Life at this fort ▴';
+      const rb=document.getElementById('dailyRead');
+      if(rb) rb.onclick=function(){
+        const rows=DAILYBYTYPE[FORTTYPE[f.id]]||[];
+        const txt='A day in the life at '+f.name+'. '+rows.map(function(r){return r.role+'. '+r.text;}).join(' ');
+        speak(txt, rb);
+      };
+    } else { stopSpeaking(); dBox.style.display='none'; dBtn.innerHTML='🏠 A Day in the Life at this fort ▾'; }
+  };
+  loadPhotos(f);
+}
+
+function renderDaily(f){
+  const rows=DAILYBYTYPE[FORTTYPE[f.id]]||[];
+  return '<p style="font-size:.85rem;color:#42586b;margin:0 0 8px;">Step back in time! Here is what different people\'s lives were like at '+esc(f.name)+':</p>'+
+    '<button class="toolbtn" id="dailyRead" style="margin-bottom:10px;">🔊 Read this to me</button>'+
+    rows.map(function(r){
+      return '<div class="daily-role"><b>'+r.emoji+' '+esc(r.role)+'</b><br>'+esc(r.text)+'</div>';
+    }).join('')+
+    '<p style="font-size:.8rem;color:#6b7a88;margin:4px 0 0;">💡 Try the <b>Dress-Up Time Traveler</b> game to dress these people in their real clothes!</p>';
+}
+
+/* Tapping a glossary word shows a kid-friendly definition */
+cardBody.addEventListener('click',function(e){
+  const g=e.target.closest('.gloss'); if(!g) return;
+  const box=document.getElementById('glossBox'); if(!box) return;
+  box.innerHTML='<b>'+esc(g.getAttribute('data-word'))+':</b> '+esc(g.getAttribute('data-def'));
+  box.style.display='block';
+});
+
+/* Load real photos live from Wikimedia.
+   Uses the API's imageinfo to get DIRECT thumbnail URLs (works whether the
+   photo lives on Commons or locally on Wikipedia), so no URL guessing. */
+function loadPhotos(f){
+  const API='https://en.wikipedia.org/w/api.php';
+  const common='?format=json&origin=*&redirects=1&action=query&titles='+encodeURIComponent(f.wiki);
+  // filenames that are clearly icons / maps / flags / UI, not real photos
+  const skip=/(logo|icon|flag|symbol|coat_of_arms|coat of arms|locator|_pog|pog\.|osm|edit-|_edit|wiki\.png|ambox|question_|padlock|increase|decrease|blank|speaker|sound|disambig|gnome|folder|red_x|checkmark|_map\b|\bmap_|map_of|location_map|reg_map|relief_map)/i;
+  const gallery=document.getElementById('gallery');
+  const banner=document.getElementById('banner');
+  const note=document.getElementById('photoNote');
+  if(!gallery) return;
+  const seen={}; let shown=0;
+
+  function updateNote(){
+    if(note) note.innerHTML='📷 Real photos from Wikimedia Commons. <a href="https://en.wikipedia.org/wiki/'+encodeURIComponent(f.wiki)+'" target="_blank" rel="noopener">See more →</a>';
+  }
+  function setHero(url,fallback){
+    if(!url) return;
+    const bimg=new Image();
+    bimg.onload=function(){ banner.innerHTML=''; banner.style.background='#0d1b2a'; bimg.style.cssText='width:100%;height:100%;object-fit:cover;'; banner.appendChild(bimg); };
+    bimg.onerror=function(){ if(fallback) setHero(fallback); };
+    bimg.src=url;
+  }
+  function addThumb(thumb, full){
+    if(!thumb || seen[thumb]) return; seen[thumb]=1;
+    const img=new Image();
+    img.alt=f.name+' photo'; img.referrerPolicy='no-referrer';
+    img.style.cursor='zoom-in';
+    img.onload=function(){ gallery.appendChild(img); shown++; updateNote(); };
+    img.onerror=function(){};
+    img.onclick=function(){ window.open(full||thumb,'_blank'); };
+    img.src=thumb;
+  }
+
+  // 1) Hero image (representative photo of the page)
+  fetch(API+common+'&prop=pageimages&piprop=original|thumbnail&pithumbsize=1000')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      const pgs=d.query&&d.query.pages; if(!pgs) return;
+      const pg=pgs[Object.keys(pgs)[0]]; if(!pg) return;
+      setHero((pg.original&&pg.original.source), (pg.thumbnail&&pg.thumbnail.source));
+    }).catch(function(){});
+
+  // 2) Photo gallery via direct imageinfo thumbnail URLs
+  fetch(API+common+'&generator=images&gimlimit=40&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=500')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      const pgs=d.query&&d.query.pages; if(!pgs) return;
+      Object.keys(pgs).forEach(function(k){
+        const pg=pgs[k]; const t=pg.title||'';
+        const ii=pg.imageinfo&&pg.imageinfo[0]; if(!ii) return;
+        if(!/^image\//i.test(ii.mime||'')) return;          // images only
+        if(/svg/i.test(ii.mime||'')) return;                 // no vector icons
+        if(skip.test(t)) return;                             // no maps/flags/logos
+        if((ii.width||0) < 320 || (ii.height||0) < 220) return; // drop tiny icons
+        addThumb(ii.thumburl||ii.url, (ii.descriptionurl||ii.url));
+      });
+    }).catch(function(){});
+
+  // 3) If nothing loaded (offline), show the illustration note
+  setTimeout(function(){
+    if(note && shown===0){
+      note.innerHTML='🎨 (Showing an illustration — you need internet to see real photos.) <a href="https://en.wikipedia.org/wiki/'+encodeURIComponent(f.wiki)+'" target="_blank" rel="noopener">See photos on Wikipedia →</a>';
+    }
+  },4500);
+}
+
+/* ============================================================
+   QUIZ ENGINE
+   ============================================================ */
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+/* Build questions from the level's own bank. Rows are [q, CORRECT, w, w, w]; all 4 choices. */
+function rowToQ(row){
+  const opts=[{text:row[1],correct:true},{text:row[2],correct:false},{text:row[3],correct:false},{text:row[4],correct:false}];
+  return {q:row[0], opts:shuffle(opts)};
+}
+function buildQuestions(f, level){
+  const bank=(QUIZBANKS[f.id] && QUIZBANKS[f.id][level.key]) || [];
+  return shuffle(bank).slice(0, level.n).map(rowToQ);
+}
+
+function startQuiz(f, level){
+  level = level || LEVELS.medium;
+  const questions=buildQuestions(f, level);
+  const state={i:0, score:0, streak:0, questions:questions, fort:f, level:level, timer:null};
+  renderQuestion(state);
+}
+
+function clearTimer(state){ if(state.timer){ clearInterval(state.timer); state.timer=null; } }
+
+function renderQuestion(state){
+  const q=state.questions[state.i];
+  const total=state.questions.length;
+  const pct=Math.round((state.i)/total*100);
+  const timed=state.level.timer>0;
+  let html=''+
+    '<div class="qhead">'+
+      '<span class="qcount">Question '+(state.i+1)+' of '+total+' <span style="font-weight:normal;color:#6b7a88;">'+state.level.emoji+'</span></span>'+
+      '<span class="qscore">⭐ '+state.score+'</span>'+
+    '</div>'+
+    '<div class="progress"><div class="bar" style="width:'+pct+'%"></div></div>'+
+    (timed?'<div class="timerbar"><div class="tfill" id="tfill"></div><span class="tnum" id="tnum">'+state.level.timer+'</span></div>':'')+
+    '<p class="question">'+esc(q.q)+'</p>'+
+    '<div class="answers" id="answers"></div>'+
+    '<div class="feedback" id="feedback"></div>'+
+    '<div class="explain" id="explain"></div>'+
+    '<button class="bigbtn green" id="nextBtn" style="display:none;">Next →</button>';
+  cardBody.innerHTML=html;
+  document.getElementById('card').scrollTop=0;
+  const ansWrap=document.getElementById('answers');
+  q.opts.forEach(function(opt){
+    const b=document.createElement('button');
+    b.className='ans'; b.textContent=opt.text;
+    b.onclick=function(){ answer(state,opt,b); };
+    ansWrap.appendChild(b);
+  });
+  if(timed){
+    let left=state.level.timer;
+    const fill=document.getElementById('tfill'), num=document.getElementById('tnum');
+    if(fill) fill.style.width='100%';
+    state.timer=setInterval(function(){
+      left--; if(num) num.textContent=left>0?left:0;
+      if(fill) fill.style.width=Math.max(0,left/state.level.timer*100)+'%';
+      if(left<=0){ clearTimer(state); timeUp(state); }
+    },1000);
+  }
+}
+
+function timeUp(state){
+  const buttons=document.querySelectorAll('#answers .ans');
+  if(!buttons.length) return;
+  buttons.forEach(function(b){ b.classList.add('locked'); b.onclick=null; });
+  const q=state.questions[state.i];
+  buttons.forEach(function(b){ q.opts.forEach(function(o){ if(o.correct && b.textContent===o.text) b.classList.add('correct'); }); });
+  state.streak=0; beep('bad');
+  const fb=document.getElementById('feedback');
+  fb.textContent='⏰ Time\'s up! The correct answer is highlighted in green.';
+  fb.className='feedback bad';
+  showNext(state);
+}
+
+function answer(state,opt,btn){
+  clearTimer(state);
+  const q=state.questions[state.i];
+  const buttons=document.querySelectorAll('#answers .ans');
+  buttons.forEach(function(b){ b.classList.add('locked'); b.onclick=null; });
+  const fb=document.getElementById('feedback');
+  if(opt.correct){
+    btn.classList.add('correct'); state.score++; state.streak++;
+    beep(state.streak>=3?'win':'good');
+    let msg=pick(['🎉 Correct! Great job!','✅ Yes! You got it!','🌟 Awesome — that\'s right!','👏 Nice work, explorer!']);
+    if(state.streak>=3) msg+=' <span class="streak">🔥 '+state.streak+' in a row!</span>';
+    fb.innerHTML=msg;
+    fb.className='feedback good';
+  }else{
+    btn.classList.add('wrong'); state.streak=0;
+    beep('bad');
+    fb.textContent='❌ Oops! The correct answer is highlighted in green.';
+    fb.className='feedback bad';
+    buttons.forEach(function(b){ q.opts.forEach(function(o){ if(o.correct && b.textContent===o.text) b.classList.add('correct'); }); });
+  }
+  showNext(state);
+}
+
+function showNext(state){
+  const nb=document.getElementById('nextBtn');
+  nb.style.display='block';
+  nb.textContent = (state.i+1<state.questions.length) ? 'Next Question →' : 'See My Score! 🏆';
+  nb.onclick=function(){ state.i++; if(state.i<state.questions.length) renderQuestion(state); else showResults(state); };
+}
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function showResults(state){
+  clearTimer(state);
+  const f=state.fort, s=state.score, total=state.questions.length;
+  const lvlKey=state.level.key;
+  const prevLvl=(PROGRESS.scores[f.id]||{})[lvlKey];
+  recordScore(f.id,lvlKey,s,total);
+  const med=medalForPct(s/total);
+  const isNewBest = (prevLvl==null || (s/total)>prevLvl.pct);
+  const p=s/total;
+  let emoji,title,msg;
+  if(p>=1){ emoji='🏆'; title='Perfect Score!'; msg='Wow! You\'re a true Fort Expert. You got every question right!'; }
+  else if(p>=0.8){ emoji='🌟'; title='Amazing!'; msg='You really know your Canadian forts. Super job!'; }
+  else if(p>=0.5){ emoji='😃'; title='Well Done!'; msg='Great effort! Try again to beat your score.'; }
+  else{ emoji='🙂'; title='Good Try!'; msg='Every explorer keeps learning. Read the story again and give it another go!'; }
+
+  const medalLine = med.e ? '<p class="result-msg" style="margin-bottom:8px;">You earned a <b>'+med.name+' medal</b> '+med.e+' on '+state.level.label+' for '+esc(f.name)+'!'+(isNewBest&&prevLvl!=null?' 🎉 New best!':'')+'</p>' : '';
+  const allDone = completedCount()>=FORTS.length;
+  const certBtn = allDone ? '<button class="bigbtn green" id="getCert">🏅 Get your Explorer Certificate!</button>' : '';
+
+  cardBody.innerHTML=''+
+    '<div class="result-emoji">'+emoji+'</div>'+
+    '<h2 class="result-title">'+title+'</h2>'+
+    badgeSVG(s,total)+
+    '<p class="result-score">You scored <b>'+s+' out of '+total+'</b> at<br>'+esc(f.name)+'!</p>'+
+    medalLine+
+    '<p class="result-msg">'+msg+'</p>'+
+    certBtn+
+    '<div class="btnrow">'+
+      '<button class="bigbtn green" id="again">🔁 Play Again ('+state.level.emoji+')</button>'+
+      '<button class="bigbtn" id="changeLvl" style="background:#8ecae6;box-shadow:0 4px 0 #5fa8c9;color:var(--navy);">🎚️ Pick Another Level</button>'+
+    '</div>'+
+    '<div class="btnrow" style="margin-top:8px;">'+
+      '<button class="bigbtn navy" id="backMap">🗺️ Back to Map</button>'+
+      '<button class="bigbtn" id="openPassport2" style="background:#e9d9b6;box-shadow:0 4px 0 #c3b48f;">🎒 My Passport</button>'+
+    '</div>';
+  document.getElementById('card').scrollTop=0;
+  document.getElementById('again').onclick=function(){ startQuiz(f, state.level); };
+  document.getElementById('changeLvl').onclick=function(){ openFort(f); };
+  document.getElementById('backMap').onclick=closeCard;
+  document.getElementById('openPassport2').onclick=function(){ openPassport(); };
+  if(certBtn) document.getElementById('getCert').onclick=function(){ openCertificate(); };
+
+  if(p>=0.8){ beep('win'); confetti(); } else { beep('good'); }
+}
+
+/* ============================================================
+   PASSPORT + CERTIFICATE
+   ============================================================ */
+const passOverlay=document.getElementById('passOverlay');
+const passBody=document.getElementById('passBody');
+document.getElementById('passportBtn').onclick=openPassport;
+document.getElementById('closePass').onclick=function(){ passOverlay.style.display='none'; };
+passOverlay.addEventListener('click',function(e){ if(e.target===passOverlay) passOverlay.style.display='none'; });
+
+function openPassport(){
+  const done=completedCount(), all=FORTS.length;
+  function lvlChip(sc,emoji){ return '<span style="display:inline-block;margin:0 1px;">'+emoji+(sc?'<b style="color:#2f9e6f;">'+sc.score+'</b>':'<span style="color:#b9c1c9;">–</span>')+'</span>'; }
+  let cells='';
+  FORTS.forEach(function(f){
+    const s=PROGRESS.scores[f.id]||{};
+    const n=levelsDone(f.id);
+    const full=n>=3;
+    const best=bestTop(f.id);
+    const med=best!=null?medalForPct(best.pct):{e:''};
+    cells+='<div class="pass-cell '+(full?'done':(n>0?'partial':'locked'))+'">'+
+      '<div class="stamp">'+(full?'✅':(n>0?n+'/3':'☆'))+'</div>'+
+      '<div class="pemoji">'+f.emoji+'</div>'+
+      '<div class="pname">'+esc(f.name)+'</div>'+
+      '<div class="pbar"><div class="pbarfill" style="width:'+Math.round(n/3*100)+'%"></div></div>'+
+      '<div class="plevels">'+lvlChip(s.easy,'🐣')+lvlChip(s.medium,'⭐')+lvlChip(s.hard,'🔥')+'</div>'+
+      '<div class="pmedal">'+(med.e||'&nbsp;')+'</div>'+
+    '</div>';
+  });
+  const certReady = done>=all;
+  passBody.innerHTML=''+
+    '<h2 class="fort-title" style="margin-top:6px;">🎒 My Explorer Passport</h2>'+
+    '<p class="fort-loc" style="color:#42586b;">You have fully completed <b style="color:#d64545;">'+done+' of '+all+'</b> forts (all 3 quizzes each). Quizzes done: <b>'+quizzesDoneTotal()+' / 36</b>.</p>'+
+    '<p style="font-size:.8rem;color:#6b7a88;margin:0 0 8px;">A fort gets its ✅ stamp only when you finish all three quizzes there (🐣 Easy, ⭐ Medium, 🔥 Hard). Numbers show your best score on each.</p>'+
+    '<div class="progress" style="margin-bottom:16px;"><div class="bar" style="width:'+Math.round(done/all*100)+'%"></div></div>'+
+    '<div class="pass-grid">'+cells+'</div>'+
+    (certReady?'<button class="bigbtn green" id="certFromPass">🏅 Get your Explorer Certificate!</button>':'')+
+    '<button class="bigbtn navy" id="passClose2" style="margin-top:10px;">Keep Exploring 🗺️</button>'+
+    '<div id="resetZone" style="margin-top:14px;text-align:center;border-top:1px solid #e3d9c4;padding-top:10px;">'+
+      '<button id="resetBtn" style="background:none;border:2px solid #c98b8b;color:#b34a4a;border-radius:12px;padding:8px 14px;font-family:inherit;font-weight:bold;cursor:pointer;font-size:.85rem;">🧹 Reset all scores (for a new player / classroom)</button>'+
+    '</div>';
+  document.getElementById('passClose2').onclick=function(){ passOverlay.style.display='none'; };
+  if(certReady) document.getElementById('certFromPass').onclick=function(){ passOverlay.style.display='none'; openCertificate(); };
+  const rb=document.getElementById('resetBtn');
+  rb.onclick=function(){
+    const zone=document.getElementById('resetZone');
+    zone.innerHTML='<p style="color:#b34a4a;font-weight:bold;margin:0 0 8px;font-size:.9rem;">Erase all passport scores, medals, and game best scores? This cannot be undone.</p>'+
+      '<button id="resetYes" style="background:#d64545;color:#fff;border:none;border-radius:12px;padding:9px 16px;font-family:inherit;font-weight:bold;cursor:pointer;margin:0 5px;">Yes, reset everything</button>'+
+      '<button id="resetNo" style="background:#e9d9b6;color:#3a2c12;border:none;border-radius:12px;padding:9px 16px;font-family:inherit;font-weight:bold;cursor:pointer;margin:0 5px;">Cancel</button>';
+    document.getElementById('resetYes').onclick=function(){ resetAllScores(); openPassport(); };
+    document.getElementById('resetNo').onclick=function(){ openPassport(); };
+  };
+  passOverlay.style.display='flex';
+}
+
+const certOverlay=document.getElementById('certOverlay');
+document.getElementById('closeCert').onclick=function(){ certOverlay.style.display='none'; };
+
+function openCertificate(){
+  const golds=FORTS.filter(function(f){return ['easy','medium','hard'].some(function(k){const sc=(PROGRESS.scores[f.id]||{})[k]; return sc&&sc.pct>=1;});}).length;
+  document.getElementById('certWrap').innerHTML=''+
+    '<div class="cert" id="cert">'+
+      '<div class="seal">🏅</div>'+
+      '<div class="sub">Official</div>'+
+      '<h2>Junior Fort Explorer</h2>'+
+      '<div class="sub">This certificate is proudly awarded to</div>'+
+      '<input id="certName" type="text" value="" placeholder="type your name" maxlength="24" aria-label="Your name"/>'+
+      '<div class="sub" style="margin-top:10px;">for bravely completing all <b>36 quizzes</b> across the <b>12 historic forts of Canada</b>,'+
+        ' from the Atlantic Ocean to the Pacific coast, and learning their amazing stories.</div>'+
+      '<div style="margin:14px 0;font-size:1.6rem;">⚓ ⭐ 🏰 🐎 🪵 💥</div>'+
+      '<div class="sub">Quizzes completed: <b>'+quizzesDoneTotal()+' / 36</b> · Perfect (gold) forts: <b>'+golds+' / 12</b> 🥇</div>'+
+      '<div class="sub" style="margin-top:10px;font-style:italic;">Keep exploring history!</div>'+
+    '</div>'+
+    '<div class="btnrow noprint" style="margin-top:16px;">'+
+      '<button class="bigbtn" id="printCert">🖨️ Print / Save my Certificate</button>'+
+      '<button class="bigbtn navy" id="certDone">Done</button>'+
+    '</div>';
+  document.getElementById('printCert').onclick=function(){ window.print(); };
+  document.getElementById('certDone').onclick=function(){ certOverlay.style.display='none'; };
+  certOverlay.style.display='flex';
+}
+
+function badgeSVG(s,total){
+  const pct=s/total;
+  const ring = pct===1 ? '#f2b035' : pct>=0.8 ? '#2f9e6f' : '#2c5a86';
+  return '<svg class="badge" viewBox="0 0 120 120">'+
+    '<circle cx="60" cy="60" r="52" fill="#fff" stroke="'+ring+'" stroke-width="7"/>'+
+    '<circle cx="60" cy="60" r="40" fill="'+ring+'" opacity="0.15"/>'+
+    '<text x="60" y="54" text-anchor="middle" font-size="30" font-weight="bold" fill="'+ring+'">'+s+'/'+total+'</text>'+
+    '<text x="60" y="80" text-anchor="middle" font-size="30">🏰</text>'+
+    '</svg>';
+}
+
+/* little confetti burst */
+function confetti(){
+  const colors=['#f2b035','#d64545','#2f9e6f','#2c5a86','#ffffff'];
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;top:-10px;left:'+Math.random()*100+'vw;width:10px;height:14px;'+
+      'background:'+colors[i%colors.length]+';z-index:2000;border-radius:2px;pointer-events:none;'+
+      'transform:rotate('+Math.random()*360+'deg);';
+    document.body.appendChild(d);
+    const fall=1200+Math.random()*1500, drift=(Math.random()-0.5)*200;
+    d.animate([{transform:d.style.transform+' translate(0,0)',opacity:1},
+               {transform:'translate('+drift+'px,110vh) rotate(720deg)',opacity:0.9}],
+              {duration:fall,easing:'ease-in'});
+    setTimeout(function(){d.remove();},fall);
+  }
+}
+
+/* ============================================================
+   GAMES HUB  (Cannon Blast, Quiz Blitz, Timeline, Dress-Up)
+   ============================================================ */
+const gameOverlay=document.getElementById('gameOverlay');
+const gameBody=document.getElementById('gameBody');
+let arcadeToken=0;   // invalidates the cannon animation loop when we leave
+document.getElementById('gamesBtn').onclick=openGamesHub;
+document.getElementById('closeGame').onclick=closeGame;
+gameOverlay.addEventListener('click',function(e){ if(e.target===gameOverlay) closeGame(); });
+function closeGame(){ arcadeToken++; gameOverlay.style.display='none'; gameBody.innerHTML=''; }
+function openGame(){ gameOverlay.style.display='flex'; const gc=document.getElementById('gameCard'); if(gc) gc.scrollTop=0; }
+
+function gcard(g,i,t,d,best){ return '<button class="gamecard" data-g="'+g+'"><span class="gi">'+i+'</span><div class="gt">'+esc(t)+(best?' <span style="color:#2f9e6f;font-size:.85rem;">🏅 Best: '+best+'</span>':'')+'</div><div class="gd">'+esc(d)+'</div></button>'; }
+function openGamesHub(){
+  const cb=cannonBestMax(), bb=PROGRESS.games.blitz;
+  gameBody.innerHTML=
+    '<h2 class="fort-title">🎮 Fort Games</h2>'+
+    '<p class="fort-loc" style="color:#42586b;">Pick a game to play!</p>'+
+    '<div style="display:flex;flex-direction:column;gap:12px;">'+
+      gcard('cannon','🎯','Cannon Blast (arcade!)','Aim, point and shoot! Blast the enemy ships before time runs out.', cb>0?(cb+' pts'):null)+
+      gcard('blitz','🧠','Fort Quiz Blitz','A fast quiz mixing questions from all 12 forts. How many can you get?', bb!=null?(bb+'/10'):null)+
+      gcard('timeline','⏳','Timeline Challenge','Drag 5 forts into order from oldest to newest.')+
+      gcard('dress','👗','Dress-Up Time Traveler','Dress the people of each fort in the right historical costume.')+
+    '</div>';
+  gameBody.querySelector('[data-g="cannon"]').onclick=cannonGame;
+  gameBody.querySelector('[data-g="blitz"]').onclick=blitzGame;
+  gameBody.querySelector('[data-g="timeline"]').onclick=timelineGame;
+  gameBody.querySelector('[data-g="dress"]').onclick=dressChooser;
+  openGame();
+}
+
+/* ---------- Timeline Challenge (drag-and-drop + tap) ---------- */
+function timelineGame(){
+  const picks=shuffle(FORTS).slice(0,5);
+  const order=[null,null,null,null,null];
+  openGame();
+  function placed(){ return order.filter(Boolean).length; }
+  function firstEmpty(){ for(let i=0;i<5;i++) if(!order[i]) return i; return -1; }
+  function payloadFor(f,from,slot){ return JSON.stringify({id:f.id,from:from,slot:(slot==null?-1:slot)}); }
+  function drop(i,data){
+    const f=picks.find(function(x){return x.id===data.id;}); if(!f) return;
+    if(data.from==='slot'){ const src=data.slot; const tmp=order[i]; order[i]=f; order[src]=tmp; }
+    else { order[i]=f; }
+    beep('good'); render();
+  }
+  function render(){
+    let slots='';
+    for(let i=0;i<5;i++){
+      const f=order[i];
+      slots+='<div class="tl-slot '+(f?'filled':'')+'" data-slot="'+i+'"'+(f?' draggable="true"':'')+'>'+
+        '<span class="num">'+(i+1)+'</span>'+
+        (f?('<div class="tl-emoji">'+f.emoji+'</div><div class="tl-name">'+esc(f.name)+'</div>')
+           :'<span style="color:#8a99a7;font-size:.7rem;">drop or<br>tap here</span>')+
+      '</div>';
+    }
+    const remaining=picks.filter(function(p){return order.indexOf(p)<0;});
+    const tray=remaining.map(function(f){
+      return '<div class="tl-card" data-id="'+f.id+'" draggable="true"><div class="tl-emoji">'+f.emoji+'</div><div class="tl-name">'+esc(f.name)+'</div></div>';
+    }).join('');
+    gameBody.innerHTML=
+      '<h2 class="fort-title">⏳ Timeline Challenge</h2>'+
+      '<p class="fort-loc" style="color:#42586b;"><b>Drag</b> the forts (or tap them) into order from the <b>oldest</b> to the <b>newest</b>. Tap a placed fort to send it back.</p>'+
+      '<div class="arrowline"><span>⬅️ Oldest (built first)</span><span>Newest ➡️</span></div>'+
+      '<div class="tl-slots">'+slots+'</div>'+
+      '<div class="tl-tray">'+(tray||'<span style="color:#42586b;font-weight:bold;">All placed — check your order!</span>')+'</div>'+
+      '<button class="bigbtn '+(placed()===5?'green':'')+'" id="tlCheck"'+(placed()<5?' disabled style="opacity:.5;"':'')+'>✅ Check my order!</button>'+
+      '<div class="btnrow" style="margin-top:10px;"><button class="bigbtn navy" id="tlNew">🔄 New Forts</button><button class="bigbtn" id="tlHub" style="background:#e9d9b6;box-shadow:0 4px 0 #c3b48f;">🎮 Games Menu</button></div>';
+    // tray cards: tap to place, drag to place
+    gameBody.querySelectorAll('.tl-card').forEach(function(c){
+      const f=picks.find(function(x){return x.id===c.getAttribute('data-id');});
+      c.onclick=function(){ const e=firstEmpty(); if(e>=0){ order[e]=f; beep('good'); render(); } };
+      c.addEventListener('dragstart',function(ev){ ev.dataTransfer.setData('text/plain',payloadFor(f,'tray',null)); ev.dataTransfer.effectAllowed='move'; });
+    });
+    // slots: tap filled to remove; drop target; filled draggable to swap
+    gameBody.querySelectorAll('.tl-slot').forEach(function(s){
+      const idx=+s.getAttribute('data-slot');
+      if(s.classList.contains('filled')){
+        s.onclick=function(){ order[idx]=null; render(); };
+        s.addEventListener('dragstart',function(ev){ ev.dataTransfer.setData('text/plain',payloadFor(order[idx],'slot',idx)); ev.dataTransfer.effectAllowed='move'; });
+      }
+      s.addEventListener('dragover',function(ev){ ev.preventDefault(); s.style.background='#fff7e3'; });
+      s.addEventListener('dragleave',function(){ s.style.background=''; });
+      s.addEventListener('drop',function(ev){ ev.preventDefault(); s.style.background=''; try{ drop(idx, JSON.parse(ev.dataTransfer.getData('text/plain'))); }catch(e){} });
+    });
+    const chk=document.getElementById('tlCheck'); if(chk && placed()===5) chk.onclick=check;
+    document.getElementById('tlNew').onclick=timelineGame;
+    document.getElementById('tlHub').onclick=openGamesHub;
+  }
+  function check(){
+    const correct=picks.slice().sort(function(a,b){return BUILT[a.id]-BUILT[b.id];});
+    let right=0, slots='';
+    for(let i=0;i<5;i++){
+      const f=order[i]; const ok=f && f.id===correct[i].id; if(ok) right++;
+      slots+='<div class="tl-slot filled '+(ok?'right':'wrong')+'">'+
+        '<span class="num">'+(i+1)+'</span>'+
+        '<div class="tl-emoji">'+f.emoji+'</div><div class="tl-name">'+esc(f.name)+'</div>'+
+        '<div class="tl-year">'+BUILT[f.id]+'</div><div>'+(ok?'✅':'❌')+'</div>'+
+      '</div>';
+    }
+    const perfect=right===5; beep(perfect?'win':'good'); if(perfect) confetti();
+    const list=correct.map(function(f){
+      return '<div style="margin:4px 0;"><b>'+BUILT[f.id]+'</b> — '+f.emoji+' '+esc(f.name)+
+        '<div style="font-size:.82rem;color:#42586b;margin-left:6px;">🏳️ '+esc(f.war)+'</div></div>';
+    }).join('');
+    gameBody.innerHTML=
+      '<h2 class="fort-title">⏳ Timeline Results</h2>'+
+      '<div class="arrowline"><span>⬅️ Oldest</span><span>Newest ➡️</span></div>'+
+      '<div class="tl-slots">'+slots+'</div>'+
+      '<p class="result-msg" style="text-align:left;">You placed <b>'+right+' of 5</b> in the right spot! '+(perfect?'🏆 Perfect timeline!':'Play again to beat your score.')+'</p>'+
+      '<div class="factcard" style="text-align:left;">📜 <b>The real order — and what each fort is famous for:</b>'+list+'</div>'+
+      '<div class="btnrow"><button class="bigbtn green" id="tlAgain">🔄 Play Again</button><button class="bigbtn navy" id="tlHub2">🎮 Games Menu</button></div>';
+    document.getElementById('tlAgain').onclick=timelineGame;
+    document.getElementById('tlHub2').onclick=openGamesHub;
+  }
+  render();
+}
+
+/* ---------- Cannon Blast: point-and-shoot arcade with difficulty ---------- */
+const CANNON_DIFF={
+  easy:  {key:'easy',  label:'🐣 Easy',   time:60, base:34, spawn:1.7, ramp:0.010, lives:5, r:22, blurb:'60 seconds, slow ships, 5 lives, big targets'},
+  medium:{key:'medium',label:'⭐ Medium', time:45, base:46, spawn:1.3, ramp:0.015, lives:3, r:19, blurb:'45 seconds, faster ships, 3 lives'},
+  hard:  {key:'hard',  label:'🔥 Hard',   time:35, base:62, spawn:0.95,ramp:0.020, lives:3, r:16, blurb:'35 seconds, fast small ships, 3 lives'}
+};
+function cannonGame(){
+  openGame();
+  const c=PROGRESS.games.cannon;
+  function bestChip(k){ return c[k]!=null?'<span style="color:#2f9e6f;font-size:.8rem;"> 🏅 '+c[k]+'</span>':''; }
+  gameBody.innerHTML=
+    '<h2 class="fort-title">🎯 Cannon Blast</h2>'+
+    '<p class="fort-loc" style="color:#42586b;">Aim with your mouse or finger and click/tap to fire. Pick a difficulty:</p>'+
+    '<div style="display:flex;flex-direction:column;gap:10px;">'+
+      '<button class="bigbtn" data-d="easy" style="background:#8ed0a6;box-shadow:0 4px 0 #5aa578;">🐣 Easy'+bestChip('easy')+'<div style="font-size:.75rem;font-weight:normal;">'+CANNON_DIFF.easy.blurb+'</div></button>'+
+      '<button class="bigbtn" data-d="medium">⭐ Medium'+bestChip('medium')+'<div style="font-size:.75rem;font-weight:normal;color:#3a2c12;">'+CANNON_DIFF.medium.blurb+'</div></button>'+
+      '<button class="bigbtn" data-d="hard" style="background:#f08a5d;box-shadow:0 4px 0 #c96a41;color:#fff;">🔥 Hard'+bestChip('hard')+'<div style="font-size:.75rem;font-weight:normal;">'+CANNON_DIFF.hard.blurb+'</div></button>'+
+    '</div>'+
+    '<button class="bigbtn navy" id="aHubPick" style="margin-top:12px;">🎮 Games Menu</button>';
+  gameBody.querySelectorAll('[data-d]').forEach(function(b){ b.onclick=function(){ cannonPlay(CANNON_DIFF[b.getAttribute('data-d')]); }; });
+  document.getElementById('aHubPick').onclick=openGamesHub;
+}
+function cannonPlay(diff){
+  openGame();
+  const myToken=++arcadeToken;
+  const W=680, H=360;
+  gameBody.innerHTML=
+    '<h2 class="fort-title">🎯 Cannon Blast <span style="font-size:1rem;color:#6b7a88;">'+diff.label+'</span></h2>'+
+    '<div style="display:flex;justify-content:space-between;font-weight:bold;color:var(--navy);margin-bottom:6px;font-size:.95rem;">'+
+      '<span>⭐ Score: <b id="aScore">0</b></span><span>Lives: <span id="aLives"></span></span><span>⏱️ <b id="aTime">'+diff.time+'</b>s</span></div>'+
+    '<canvas id="cvs" width="'+W+'" height="'+H+'" style="width:100%;border-radius:14px;border:3px solid var(--navy);touch-action:none;cursor:crosshair;display:block;"></canvas>'+
+    '<div id="aFact" style="min-height:20px;margin-top:8px;font-size:.9rem;color:#b5820f;font-weight:bold;text-align:center;"></div>'+
+    '<div class="btnrow" style="margin-top:8px;"><button class="bigbtn navy" id="aHub">🎮 Games Menu</button></div>';
+  document.getElementById('aHub').onclick=function(){ arcadeToken++; cannonGame(); };
+  const cvs=document.getElementById('cvs'), ctx=cvs.getContext('2d');
+  const aScore=document.getElementById('aScore'), aLives=document.getElementById('aLives'), aTime=document.getElementById('aTime'), aFact=document.getElementById('aFact');
+  const pivot={x:54,y:H-30};
+  let aim={x:W*0.6,y:H*0.35};
+  let ships=[], balls=[], parts=[];
+  let score=0, lives=diff.lives, time=diff.time, done=false;
+  let spawnT=0, spawnGap=diff.spawn, cool=0, last=null, factT=0;
+
+  function toC(e){ const r=cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)*(cvs.width/r.width), y:(e.clientY-r.top)*(cvs.height/r.height)}; }
+  cvs.addEventListener('pointermove',function(e){ aim=toC(e); });
+  cvs.addEventListener('pointerdown',function(e){ aim=toC(e); fire(); });
+
+  function fire(){
+    if(done||cool>0) return; cool=0.25;
+    const dx=aim.x-pivot.x, dy=aim.y-pivot.y, d=Math.hypot(dx,dy)||1, sp=470;
+    balls.push({x:pivot.x+dx/d*32, y:pivot.y+dy/d*32, vx:dx/d*sp, vy:dy/d*sp, life:1.8});
+    beep('good');
+  }
+  function spawnShip(){
+    const y=36+Math.random()*(H-110);
+    const speed=diff.base+Math.random()*40+ (diff.time-time)*0.7;
+    ships.push({x:W+30, y:y, vx:-speed, r:diff.r, fort:pick(FORTS)});
+  }
+  function boom(x,y){ for(let i=0;i<8;i++){ const a=Math.random()*6.28, s=40+Math.random()*80; parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.5,e:pick(['💥','✨','⭐'])}); } }
+  function showFact(f){ if(factT>0) return; factT=2.6; const fa=FACTS[f.id]?pick(FACTS[f.id]):''; if(aFact) aFact.textContent=f.emoji+' '+f.name+' — '+fa; }
+
+  function update(dt){
+    time-=dt; if(time<=0){ time=0; end(); return; }
+    cool=Math.max(0,cool-dt); factT=Math.max(0,factT-dt); if(factT<=0 && aFact && aFact.textContent) aFact.textContent='';
+    spawnT+=dt; if(spawnT>=spawnGap){ spawnT=0; spawnGap=Math.max(0.5,spawnGap-diff.ramp); spawnShip(); }
+    for(let i=ships.length-1;i>=0;i--){ const s=ships[i]; s.x+=s.vx*dt;
+      if(s.x<pivot.x+8){ ships.splice(i,1); lives--; beep('bad'); if(lives<=0){ end(); return; } }
+    }
+    for(let i=balls.length-1;i>=0;i--){ const b=balls[i]; b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+      if(b.life<=0||b.x<-10||b.x>W+10||b.y<-10||b.y>H+10){ balls.splice(i,1); continue; }
+      for(let j=ships.length-1;j>=0;j--){ const s=ships[j];
+        if(Math.hypot(b.x-s.x,b.y-s.y)<s.r+6){ boom(s.x,s.y); showFact(s.fort); ships.splice(j,1); balls.splice(i,1); score+=10; beep('win'); break; }
+      }
+    }
+    for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; if(p.life<=0) parts.splice(i,1); }
+    if(aScore) aScore.textContent=score;
+    if(aTime) aTime.textContent=Math.ceil(time);
+    if(aLives) aLives.textContent=lives>0?'🚩'.repeat(lives):'—';
+  }
+  function draw(){
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#bfe6f5'); g.addColorStop(0.58,'#a7d8ef'); g.addColorStop(0.58,'#6bb0d8'); g.addColorStop(1,'#3f83b3');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='34px serif'; ctx.fillText('🏰',28,H-28);
+    const ang=Math.atan2(aim.y-pivot.y, aim.x-pivot.x);
+    ctx.save(); ctx.translate(pivot.x,pivot.y); ctx.rotate(ang); ctx.fillStyle='#2b2b2b'; ctx.fillRect(0,-6,42,12); ctx.restore();
+    ctx.beginPath(); ctx.arc(pivot.x,pivot.y,13,0,7); ctx.fillStyle='#444'; ctx.fill();
+    const shipFont=Math.round(diff.r*1.6);
+    ctx.font=shipFont+'px serif'; ships.forEach(function(s){ ctx.fillText('🚢',s.x,s.y); });
+    ctx.fillStyle='#1a1a1a'; balls.forEach(function(b){ ctx.beginPath(); ctx.arc(b.x,b.y,6,0,7); ctx.fill(); });
+    parts.forEach(function(p){ ctx.globalAlpha=Math.max(0,p.life*2); ctx.font='18px serif'; ctx.fillText(p.e,p.x,p.y); ctx.globalAlpha=1; });
+    ctx.strokeStyle='rgba(214,69,69,.7)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(aim.x,aim.y,9,0,7); ctx.stroke();
+  }
+  function frame(ts){
+    if(myToken!==arcadeToken || gameOverlay.style.display==='none') return;
+    if(last==null) last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.05) dt=0.05;
+    update(dt); if(done) return; draw(); requestAnimationFrame(frame);
+  }
+  function end(){
+    if(done) return; done=true;
+    const prevBest=PROGRESS.games.cannon[diff.key]; recordCannonBest(diff.key,score);
+    const isBest=(prevBest==null||score>prevBest);
+    const great=score>=100, good=score>=50;
+    beep(great?'win':'good'); if(great) confetti();
+    gameBody.innerHTML='<div class="result-emoji">'+(great?'🏆':good?'🎯':'💪')+'</div>'+
+      '<h2 class="result-title">Time\'s Up!</h2>'+
+      '<p class="result-score">You blasted ships for <b>'+score+' points</b> on '+diff.label+'!'+(isBest&&prevBest!=null?' 🎉 New best!':'')+'</p>'+
+      '<p class="result-msg" style="margin-bottom:6px;">🏅 Your best on '+diff.label+': <b>'+PROGRESS.games.cannon[diff.key]+'</b> points</p>'+
+      '<p class="result-msg">'+(great?'Master gunner! Incredible aim! 🎉':good?'Great shooting, defender!':'Good effort — try again to beat your score!')+'</p>'+
+      '<div class="btnrow"><button class="bigbtn green" id="aAgain">🔁 Play Again ('+diff.label+')</button><button class="bigbtn" id="aLevel" style="background:#8ecae6;box-shadow:0 4px 0 #5fa8c9;color:var(--navy);">🎚️ Change Difficulty</button><button class="bigbtn navy" id="aHub2">🎮 Menu</button></div>';
+    document.getElementById('aAgain').onclick=function(){ cannonPlay(diff); };
+    document.getElementById('aLevel').onclick=cannonGame;
+    document.getElementById('aHub2').onclick=openGamesHub;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Fort Quiz Blitz: mixed questions from all forts ---------- */
+function blitzGame(){
+  openGame();
+  const pool=[];
+  FORTS.forEach(function(f){ ['easy','medium','hard'].forEach(function(k){ (QUIZBANKS[f.id][k]||[]).forEach(function(r){ pool.push({row:r,fort:f}); }); }); });
+  const qs=shuffle(pool).slice(0,10);
+  let i=0, score=0, streak=0, t=null;
+  function clearT(){ if(t){ clearInterval(t); t=null; } }
+  function lock(){ document.querySelectorAll('#bans .ans').forEach(function(b){ b.classList.add('locked'); b.onclick=null; }); }
+  function reveal(q){ document.querySelectorAll('#bans .ans').forEach(function(b){ q.opts.forEach(function(o){ if(o.correct && b.textContent===o.text) b.classList.add('correct'); }); }); }
+  function render(){
+    const item=qs[i], q=rowToQ(item.row), total=qs.length;
+    gameBody.innerHTML=
+      '<h2 class="fort-title">🧠 Fort Quiz Blitz</h2>'+
+      '<div class="qhead"><span class="qcount">Question '+(i+1)+' of '+total+'</span><span class="qscore">⭐ '+score+'</span></div>'+
+      '<div class="progress"><div class="bar" style="width:'+Math.round(i/total*100)+'%"></div></div>'+
+      '<div class="timerbar"><div class="tfill" id="btf"></div><span class="tnum" id="btn">10</span></div>'+
+      '<p style="text-align:center;font-size:.85rem;color:#42586b;margin:0 0 2px;">This one is about: '+item.fort.emoji+' <b>'+esc(item.fort.name)+'</b></p>'+
+      '<p class="question">'+esc(q.q)+'</p>'+
+      '<div class="answers" id="bans"></div>'+
+      '<div class="feedback" id="bfb"></div>'+
+      '<button class="bigbtn green" id="bnext" style="display:none;">Next →</button>'+
+      '<button class="bigbtn navy" id="bMenu" style="margin-top:10px;">🎮 Games Menu</button>';
+    const wrap=document.getElementById('bans');
+    q.opts.forEach(function(o){ const b=document.createElement('button'); b.className='ans'; b.textContent=o.text; b.onclick=function(){ answer(o,b,q); }; wrap.appendChild(b); });
+    document.getElementById('bMenu').onclick=function(){ clearT(); openGamesHub(); };
+    let left=10; const fill=document.getElementById('btf'), num=document.getElementById('btn'); if(fill) fill.style.width='100%';
+    t=setInterval(function(){
+      if(gameOverlay.style.display==='none'){ clearT(); return; }
+      left--; if(num) num.textContent=left>0?left:0; if(fill) fill.style.width=Math.max(0,left*10)+'%';
+      if(left<=0){ clearT(); lock(); streak=0; beep('bad'); reveal(q); const fb=document.getElementById('bfb'); if(fb){ fb.textContent='⏰ Time\'s up!'; fb.className='feedback bad'; } showNextB(); }
+    },1000);
+  }
+  function answer(o,btn,q){
+    clearT(); lock(); const fb=document.getElementById('bfb');
+    if(o.correct){ btn.classList.add('correct'); score++; streak++; beep(streak>=3?'win':'good'); fb.innerHTML='✅ Correct!'+(streak>=3?' <span class="streak">🔥 '+streak+'!</span>':''); fb.className='feedback good'; }
+    else{ btn.classList.add('wrong'); streak=0; beep('bad'); reveal(q); fb.textContent='❌ The green one was right.'; fb.className='feedback bad'; }
+    showNextB();
+  }
+  function showNextB(){
+    const nb=document.getElementById('bnext'); if(!nb) return;
+    nb.style.display='block'; nb.textContent=(i+1<qs.length)?'Next →':'See My Score! 🏆';
+    nb.onclick=function(){ i++; if(i<qs.length) render(); else results(); };
+  }
+  function results(){
+    clearT(); const total=qs.length, p=score/total;
+    const prevBest=PROGRESS.games.blitz; recordGameBest('blitz',score);
+    const isBest=(prevBest==null||score>prevBest);
+    beep(p>=0.8?'win':'good'); if(p>=0.8) confetti();
+    gameBody.innerHTML='<div class="result-emoji">'+(p>=0.8?'🏆':p>=0.5?'😃':'🙂')+'</div>'+
+      '<h2 class="result-title">Quiz Blitz Done!</h2>'+
+      '<p class="result-score">You scored <b>'+score+' / '+total+'</b> across all the forts!'+(isBest&&prevBest!=null?' 🎉 New best!':'')+'</p>'+
+      '<p class="result-msg" style="margin-bottom:6px;">🏅 Your best: <b>'+PROGRESS.games.blitz+' / '+total+'</b></p>'+
+      '<p class="result-msg">'+(p>=0.8?'Wow — a true Fort Expert! 🎉':p>=0.5?'Great job! Play again to beat your score.':'Keep exploring the forts and try again!')+'</p>'+
+      '<div class="btnrow"><button class="bigbtn green" id="bAgain">🔁 Play Again</button><button class="bigbtn navy" id="bHub">🎮 Games Menu</button></div>';
+    document.getElementById('bAgain').onclick=blitzGame;
+    document.getElementById('bHub').onclick=openGamesHub;
+  }
+  render();
+}
+
+/* ---------- Dress-Up Time Traveler (SVG paper doll) ---------- */
+var DU_SKIN='#f1c9a5';
+function duHat(i){
+  switch(i){
+    case 0: return '<ellipse cx="80" cy="34" rx="33" ry="9" fill="#1c1c1c"/><path d="M54 35 Q80 9 106 35 Z" fill="#242424"/>';
+    case 1: return '<rect x="64" y="6" width="32" height="30" rx="3" fill="#1c1c1c"/><rect x="64" y="27" width="32" height="5" fill="#e2b13c"/><rect x="59" y="34" width="42" height="6" rx="3" fill="#111"/><circle cx="80" cy="5" r="4" fill="#c0392b"/>';
+    case 2: return '<path d="M56 37 Q56 13 80 13 Q104 13 104 37 Z" fill="#6b4a2b"/><ellipse cx="80" cy="37" rx="26" ry="7" fill="#8a6238"/><circle cx="66" cy="35" r="4" fill="#7d5730"/><circle cx="94" cy="35" r="4" fill="#7d5730"/>';
+    case 3: return '<path d="M54 37 Q80 7 106 37 Z" fill="#f3e9d2"/><ellipse cx="80" cy="39" rx="30" ry="7" fill="#e7d7b0"/><rect x="76" y="30" width="8" height="10" fill="#d9a7b0"/>';
+    case 4: return '<ellipse cx="80" cy="37" rx="40" ry="8" fill="#7a5230"/><path d="M62 37 Q62 15 80 15 Q98 15 98 37 Z" fill="#8a5f3a"/><rect x="62" y="31" width="36" height="5" fill="#5b3d22"/>';
+    case 5: return '<path d="M55 40 Q55 16 80 16 Q105 16 105 40 Q80 30 55 40 Z" fill="#fdfdfa"/><path d="M53 40 Q80 33 107 40 Q104 46 80 44 Q56 46 53 40 Z" fill="#f0efe6"/><circle cx="59" cy="40" r="3" fill="#fff"/><circle cx="72" cy="43" r="3" fill="#fff"/><circle cx="88" cy="43" r="3" fill="#fff"/><circle cx="101" cy="40" r="3" fill="#fff"/>';
+    case 6: return '<ellipse cx="80" cy="33" rx="25" ry="7" fill="#6f5f49"/><path d="M58 33 Q80 17 102 33 Z" fill="#84725a"/><rect x="80" y="30" width="20" height="5" rx="2" fill="#5e4f3c"/>';
+    case 7: return '<path d="M58 42 Q58 24 80 24 Q102 24 102 42 Q80 34 58 42 Z" fill="#fbfbf5"/><path d="M56 42 Q80 36 104 42 Q100 47 80 45 Q60 47 56 42 Z" fill="#efe9dc"/><rect x="76" y="26" width="8" height="6" rx="2" fill="#c9a0b0"/>';
+    case 8: return '<path d="M58 40 Q58 18 80 18 Q102 18 102 40 Z" fill="#3b6ea5"/><rect x="57" y="36" width="46" height="7" rx="3" fill="#2f5a86"/><circle cx="80" cy="16" r="5" fill="#cfe0ef"/>';
+  }
+  return '';
+}
+function duCoat(i){
+  const colors=['#c0392b','#2c5a86','#6b4a2b','#9c6b7d','#c0392b','#6f7f95','#b5763a','#6a4a6b','#b56d86','#7fa0b5'];
+  const col=(i==null?'#b7b7b7':(colors[i]||'#b7b7b7'));
+  const dress=(i===3||i===5||i===7||i===8);
+  const tunic=(i===6||i===9);
+  let s='';
+  s+='<rect x="45" y="84" width="14" height="62" rx="7" fill="'+col+'"/>';
+  s+='<rect x="101" y="84" width="14" height="62" rx="7" fill="'+col+'"/>';
+  if(dress){
+    s+='<path d="M60 82 Q80 74 100 82 L114 152 L46 152 Z" fill="'+col+'"/>';
+    if(i===5||i===8){ s+='<path d="M66 92 L94 92 L99 150 L61 150 Z" fill="#f3ecd9"/>'; }   // apron/pinafore
+    if(i===7){ s+='<path d="M70 82 Q80 88 90 82 L86 94 Q80 90 74 94 Z" fill="#fbfbf5"/>'; s+='<path d="M74 96 L86 96 L80 104 Z" fill="#c9a0b0"/>'; } // lace collar + bow
+  } else if(tunic){
+    s+='<path d="M60 84 Q80 78 100 84 L104 132 L56 132 Z" fill="'+col+'"/>';
+    if(i===6){ s+='<rect x="56" y="124" width="48" height="6" fill="#7a4e22"/>'; }        // belt
+    if(i===9){ s+='<rect x="76" y="84" width="8" height="48" fill="#ffffff33"/>'; }        // smock placket
+  } else {
+    s+='<path d="M58 82 Q80 74 102 82 L108 150 L52 150 Z" fill="'+col+'"/>';
+  }
+  if(i===2){
+    s+='<path d="M58 82 Q80 74 102 82 L98 98 Q80 90 62 98 Z" fill="#c2a878"/>';
+    s+='<rect x="77" y="90" width="6" height="58" fill="#4f3720"/>';
+  }
+  if(i===0||i===1||i===4){ [98,110,122,134].forEach(function(y){ s+='<circle cx="80" cy="'+y+'" r="2.6" fill="#e2b13c"/>'; }); }
+  if(i===4){
+    s+='<path d="M58 86 L102 138" stroke="#4a3116" stroke-width="7" fill="none"/>';
+    s+='<rect x="52" y="130" width="56" height="9" fill="#4a3116"/>';
+    s+='<rect x="76" y="131" width="8" height="7" fill="#e2b13c"/>';
+  }
+  const handY=(tunic?128:148);
+  s+='<circle cx="52" cy="'+handY+'" r="7" fill="'+DU_SKIN+'"/><circle cx="108" cy="'+handY+'" r="7" fill="'+DU_SKIN+'"/>';
+  return s;
+}
+function duLegs(i){
+  const dress=(i===3||i===5||i===7||i===8);
+  if(dress){ return '<rect x="66" y="150" width="12" height="20" fill="#2b3a4f"/><rect x="82" y="150" width="12" height="20" fill="#2b3a4f"/><rect x="63" y="168" width="17" height="8" rx="3" fill="#241a12"/><rect x="80" y="168" width="17" height="8" rx="3" fill="#241a12"/>'; }
+  const top=(i===6||i===9)?132:150;
+  let s='<rect x="68" y="'+top+'" width="11" height="'+(190-top)+'" fill="#2b3a4f"/><rect x="82" y="'+top+'" width="11" height="'+(190-top)+'" fill="#2b3a4f"/>';
+  if(i===4){ s+='<rect x="71" y="150" width="3.5" height="40" fill="#e2b13c"/><rect x="85" y="150" width="3.5" height="40" fill="#e2b13c"/>'; }
+  s+='<rect x="64" y="188" width="16" height="9" rx="3" fill="#241a12"/><rect x="81" y="188" width="16" height="9" rx="3" fill="#241a12"/>';
+  return s;
+}
+function duProp(i){
+  switch(i){
+    case 0: return '<g transform="translate(104,150) rotate(-38)"><rect x="0" y="-2.5" width="48" height="5" rx="1" fill="#5a3a1c"/><rect x="-8" y="-5" width="14" height="10" rx="2" fill="#3a2512"/></g>';
+    case 1: return '<text x="122" y="152" font-size="26" text-anchor="middle">🪓</text>';
+    case 2: return '<text x="122" y="154" font-size="26" text-anchor="middle">🧺</text>';
+    case 3: return '<text x="128" y="180" font-size="30" text-anchor="middle">🐎</text>';
+    case 4: return '<g transform="translate(104,150) rotate(-30)"><rect x="0" y="-3" width="34" height="6" rx="3" fill="#333"/><rect x="30" y="-4" width="7" height="8" rx="1" fill="#111"/></g>';
+    case 5: return '<text x="122" y="154" font-size="26" text-anchor="middle">🍲</text>';
+    case 6: return '<text x="120" y="140" font-size="24" text-anchor="middle">🧸</text>';
+    case 7: return '<circle cx="120" cy="150" r="15" fill="none" stroke="#a06a30" stroke-width="4"/>';
+    case 8: return '<g transform="translate(116,150)"><path d="M0 -11 L9 -1 L0 13 L-9 -1 Z" fill="#c0392b"/><rect x="-1.5" y="-17" width="3" height="8" fill="#5a3a1c"/></g>';
+    case 9: return '<text x="122" y="152" font-size="24" text-anchor="middle">🧶</text>';
+  }
+  return '';
+}
+function duSVG(head,body,hand,fig){
+  fig=fig||'man';
+  let s='';
+  s+=duLegs(body); s+=duCoat(body);
+  s+='<rect x="73" y="70" width="14" height="14" fill="'+DU_SKIN+'"/>';
+  s+='<circle cx="80" cy="54" r="23" fill="'+DU_SKIN+'"/>';
+  if(fig==='woman'){
+    s+='<path d="M57 42 Q56 84 66 92 L71 74 Q65 58 68 48 Z" fill="#5a3a22"/>';
+    s+='<path d="M103 42 Q104 84 94 92 L89 74 Q95 58 92 48 Z" fill="#5a3a22"/>';
+  }
+  s+='<path d="M59 52 Q60 31 80 31 Q100 31 101 52 Q90 44 80 44 Q70 44 59 52 Z" fill="#5a3a22"/>';
+  s+='<circle cx="72" cy="55" r="2.6" fill="#33260f"/><circle cx="88" cy="55" r="2.6" fill="#33260f"/>';
+  s+='<path d="M72 63 Q80 70 88 63" stroke="#b05a3e" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
+  if(head!=null) s+=duHat(head);
+  if(hand!=null) s+=duProp(hand);
+  if(fig==='child') s='<g transform="translate(17,42) scale(0.78)">'+s+'</g>';
+  return '<svg viewBox="0 0 160 205" width="150" height="192" style="max-width:100%;">'+s+'</svg>';
+}
+function duIcon(cat,i){
+  if(cat==='head') return '<svg viewBox="38 0 84 82" width="44" height="42"><circle cx="80" cy="54" r="23" fill="'+DU_SKIN+'"/>'+duHat(i)+'</svg>';
+  if(cat==='body') return '<svg viewBox="40 76 80 84" width="44" height="46">'+duLegs(i)+duCoat(i)+'</svg>';
+  return '<svg viewBox="86 116 74 76" width="42" height="42">'+duProp(i)+'</svg>';
+}
+function dressChooser(){
+  openGame();
+  const cards=FORTS.map(function(f){
+    return '<button class="tl-card" data-id="'+f.id+'" style="width:108px;border-color:var(--navy);"><div class="tl-emoji">'+f.emoji+'</div><div class="tl-name">'+esc(f.name)+'</div></button>';
+  }).join('');
+  gameBody.innerHTML='<h2 class="fort-title">👗 Dress-Up Time Traveler</h2>'+
+    '<p class="fort-loc" style="color:#42586b;">Which fort\'s people would you like to dress? Pick a fort!</p>'+
+    '<div class="tl-tray">'+cards+'</div>'+
+    '<button class="bigbtn navy" id="duBackHub">🎮 Games Menu</button>';
+  gameBody.querySelectorAll('.tl-card').forEach(function(c){ c.onclick=function(){ dressPersonPicker(FORTS.find(function(x){return x.id===c.getAttribute('data-id');})); }; });
+  document.getElementById('duBackHub').onclick=openGamesHub;
+}
+/* Step 2: pick which person (man / woman / child) to dress */
+function dressPersonPicker(f){
+  const chars=charsFor(f.id);
+  const cards=chars.map(function(c,idx){
+    return '<button class="du-person" data-idx="'+idx+'">'+
+      '<div style="height:120px;display:flex;align-items:flex-end;justify-content:center;">'+duSVG(null,null,null,c.fig)+'</div>'+
+      '<div style="font-weight:bold;color:var(--navy);margin-top:4px;">'+esc(c.who)+'</div>'+
+      '<div style="font-size:.75rem;color:#6b7a88;">'+(c.fig==='man'?'👨 grown man':c.fig==='woman'?'👩 grown woman':'🧒 child')+'</div>'+
+    '</button>';
+  }).join('');
+  gameBody.innerHTML='<h2 class="fort-title">👗 Dress-Up: '+esc(f.name)+'</h2>'+
+    '<p class="fort-loc" style="color:#42586b;">Who would you like to dress? Each person wore different clothes!</p>'+
+    '<div class="du-people">'+cards+'</div>'+
+    '<p style="font-size:.8rem;color:#6b7a88;">💡 Read "A Day in the Life" on a fort to learn what each person wore.</p>'+
+    '<div class="btnrow"><button class="bigbtn navy" id="duPickFort">🔄 Another Fort</button><button class="bigbtn" id="duPHub" style="background:#e9d9b6;box-shadow:0 4px 0 #c3b48f;">🎮 Games Menu</button></div>';
+  gameBody.querySelectorAll('.du-person').forEach(function(b){ b.onclick=function(){ dressBuild(f, chars[+b.getAttribute('data-idx')]); }; });
+  document.getElementById('duPickFort').onclick=dressChooser;
+  document.getElementById('duPHub').onclick=openGamesHub;
+}
+/* Step 3: dress the chosen person */
+function dressBuild(f, target){
+  const sel={head:null,body:null,hand:null};
+  const pool=DU_POOL[target.fig]||DU_POOL.man;
+  // show options appropriate to this person, in a shuffled order (so the answer isn't obvious)
+  const shown={head:shuffle(pool.head), body:shuffle(pool.body), hand:shuffle(pool.hand)};
+  function ready(){ return sel.head!=null&&sel.body!=null&&sel.hand!=null; }
+  function cat(key,label){
+    const opts=shown[key].map(function(idx){
+      const o=DRESS_OPTS[key][idx];
+      return '<button class="du-opt '+(sel[key]===idx?'sel':'')+'" data-cat="'+key+'" data-idx="'+idx+'"><span class="oe">'+duIcon(key,idx)+'</span>'+esc(o.label)+'</button>';
+    }).join('');
+    return '<div class="du-cat"><h4>'+label+':</h4><div class="du-opts">'+opts+'</div></div>';
+  }
+  function render(){
+    gameBody.innerHTML=
+      '<h2 class="fort-title">👗 Dress the '+esc(target.who)+'</h2>'+
+      '<p class="fort-loc">from '+esc(f.name)+' — choose the right hat, clothes, and item!</p>'+
+      '<div class="du-wrap"><div class="du-char">'+duSVG(sel.head,sel.body,sel.hand,target.fig)+'</div>'+
+      '<div class="du-controls">'+cat('head','Hat / Head')+cat('body','Clothes')+cat('hand','Item')+'</div></div>'+
+      '<button class="bigbtn '+(ready()?'green':'')+'" id="duCheck"'+(ready()?'':' disabled style="opacity:.5;"')+'>✅ Check my outfit!</button>'+
+      '<div class="btnrow" style="margin-top:10px;"><button class="bigbtn navy" id="duBack">🔄 Another Person</button><button class="bigbtn" id="duHub" style="background:#e9d9b6;box-shadow:0 4px 0 #c3b48f;">🎮 Games Menu</button></div>';
+    gameBody.querySelectorAll('.du-opt').forEach(function(b){ b.onclick=function(){ sel[b.getAttribute('data-cat')]=+b.getAttribute('data-idx'); beep('good'); render(); }; });
+    document.getElementById('duBack').onclick=function(){ dressPersonPicker(f); };
+    document.getElementById('duHub').onclick=openGamesHub;
+    const c=document.getElementById('duCheck'); if(c && ready()) c.onclick=check;
+  }
+  function mark(ok){ return ok?'<span style="color:#2f9e6f;">✔</span>':'<span style="color:#d64545;">✘</span>'; }
+  function check(){
+    const rh=sel.head===target.head, rb=sel.body===target.body, rn=sel.hand===target.hand;
+    const n=(rh?1:0)+(rb?1:0)+(rn?1:0);
+    beep(n===3?'win':'good'); if(n===3) confetti();
+    gameBody.innerHTML=
+      '<h2 class="fort-title">👗 '+(n===3?'Perfect Outfit! 🎉':'Good try!')+'</h2>'+
+      '<p class="fort-loc">You got <b>'+n+' of 3</b> right for the '+esc(target.who)+'.</p>'+
+      '<div class="du-compare">'+
+        '<div class="du-col"><div class="du-collabel">👕 Your outfit</div><div class="du-char">'+duSVG(sel.head,sel.body,sel.hand,target.fig)+'</div></div>'+
+        '<div class="du-col"><div class="du-collabel" style="color:#2f9e6f;">✅ The real outfit</div><div class="du-char" style="border-color:#2f9e6f;">'+duSVG(target.head,target.body,target.hand,target.fig)+'</div></div>'+
+      '</div>'+
+      '<div class="factcard" style="text-align:left;">'+
+        mark(rh)+' <b>Hat:</b> you picked <i>'+esc(DRESS_OPTS.head[sel.head].label)+'</i>'+(rh?'':' — real: <b>'+esc(DRESS_OPTS.head[target.head].label)+'</b>')+'<br>'+
+        mark(rb)+' <b>Clothes:</b> you picked <i>'+esc(DRESS_OPTS.body[sel.body].label)+'</i>'+(rb?'':' — real: <b>'+esc(DRESS_OPTS.body[target.body].label)+'</b>')+'<br>'+
+        mark(rn)+' <b>Item:</b> you picked <i>'+esc(DRESS_OPTS.hand[sel.hand].label)+'</i>'+(rn?'':' — real: <b>'+esc(DRESS_OPTS.hand[target.hand].label)+'</b>')+
+      '</div>'+
+      '<div class="story">'+esc(target.fact)+'</div>'+
+      '<div class="btnrow"><button class="bigbtn green" id="duRetry">🔄 Try Again</button><button class="bigbtn" id="duAnother" style="background:#8ecae6;box-shadow:0 4px 0 #5fa8c9;color:var(--navy);">👥 Another Person</button><button class="bigbtn navy" id="duHub2">🎮 Menu</button></div>';
+    document.getElementById('duRetry').onclick=function(){ dressBuild(f,target); };
+    document.getElementById('duAnother').onclick=function(){ dressPersonPicker(f); };
+    document.getElementById('duHub2').onclick=openGamesHub;
+  }
+  render();
+}
+</script>
+</body>
+</html>
